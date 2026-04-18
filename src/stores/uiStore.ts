@@ -1,0 +1,48 @@
+import { create } from "zustand";
+import type { SearchFilters } from "@/types";
+
+type UiStore = {
+  selectedItemId: number | null;
+  setSelectedItemId: (id: number | null) => void;
+
+  searchQuery: string;
+  setSearchQuery: (q: string) => void;
+
+  filters: SearchFilters;
+  setFilters: (patch: Partial<SearchFilters>) => void;
+  resetFilters: () => void;
+
+  itemsVersion: number;
+  bumpItems: () => void;
+
+  categoriesVersion: number;
+  bumpCategories: () => void;
+
+  tagsVersion: number;
+  bumpTags: () => void;
+};
+
+const emptyFilters: SearchFilters = {};
+
+export const useUiStore = create<UiStore>((set) => ({
+  selectedItemId: null,
+  setSelectedItemId: (id) => set({ selectedItemId: id }),
+
+  searchQuery: "",
+  setSearchQuery: (q) => set({ searchQuery: q }),
+
+  filters: emptyFilters,
+  setFilters: (patch) =>
+    set((state) => ({ filters: { ...state.filters, ...patch } })),
+  resetFilters: () => set({ filters: emptyFilters }),
+
+  itemsVersion: 0,
+  bumpItems: () => set((s) => ({ itemsVersion: s.itemsVersion + 1 })),
+
+  categoriesVersion: 0,
+  bumpCategories: () =>
+    set((s) => ({ categoriesVersion: s.categoriesVersion + 1 })),
+
+  tagsVersion: 0,
+  bumpTags: () => set((s) => ({ tagsVersion: s.tagsVersion + 1 })),
+}));
