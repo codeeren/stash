@@ -1,49 +1,75 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
+import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import "./App.css";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { getDb } from "@/lib/db";
+
+type TableRow = { name: string };
 
 function App() {
   const [greetMsg, setGreetMsg] = useState("");
   const [name, setName] = useState("");
+  const [tables, setTables] = useState<string[]>([]);
+  const [dbError, setDbError] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const db = await getDb();
+        const rows = await db.select<TableRow[]>(
+          "SELECT name FROM sqlite_master WHERE type IN ('table','view') AND name NOT LIKE 'sqlite_%' ORDER BY name",
+        );
+        setTables(rows.map((r) => r.name));
+      } catch (e) {
+        setDbError(String(e));
+      }
+    })();
+  }, []);
 
   async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
     setGreetMsg(await invoke("greet", { name }));
   }
 
   return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
-
-      <div className="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
+    <main className="min-h-screen flex flex-col items-center justify-center gap-6 p-8">
+      <h1 className="text-3xl font-semibold tracking-tight">Stash</h1>
+      <p className="text-sm text-muted-foreground">
+        Tauri + React + Tailwind + shadcn/ui — scaffold sanity check
+      </p>
 
       <form
-        className="row"
+        className="flex gap-2 w-full max-w-sm"
         onSubmit={(e) => {
           e.preventDefault();
           greet();
         }}
       >
-        <input
-          id="greet-input"
+        <Input
+          placeholder="Adınızı yazın..."
+          value={name}
           onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
         />
-        <button type="submit">Greet</button>
+        <Button type="submit">Greet</Button>
       </form>
-      <p>{greetMsg}</p>
+
+      {greetMsg && (
+        <p className="text-sm rounded-md bg-muted px-3 py-2">{greetMsg}</p>
+      )}
+
+      <section className="w-full max-w-sm text-sm border rounded-md p-4">
+        <div className="font-medium mb-2">SQLite smoke test</div>
+        {dbError ? (
+          <div className="text-destructive">DB error: {dbError}</div>
+        ) : tables.length === 0 ? (
+          <div className="text-muted-foreground">Loading…</div>
+        ) : (
+          <ul className="list-disc list-inside text-muted-foreground">
+            {tables.map((t) => (
+              <li key={t}>{t}</li>
+            ))}
+          </ul>
+        )}
+      </section>
     </main>
   );
 }
