@@ -1,76 +1,75 @@
-import { useEffect, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { useState } from "react";
+import { ItemDetail } from "@/components/ItemDetail";
+import { ItemList } from "@/components/ItemList";
+import { Sidebar } from "@/components/Sidebar";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { getDb } from "@/lib/db";
+import { useItems } from "@/hooks/useItems";
+import { seedSampleData } from "@/lib/seed";
+import { useUiStore } from "@/stores/uiStore";
 
-type TableRow = { name: string };
+function EmptyDatabaseOverlay() {
+  const { items, loading } = useItems();
+  const query = useUiStore((s) => s.searchQuery);
+  const filters = useUiStore((s) => s.filters);
+  const bumpItems = useUiStore((s) => s.bumpItems);
+  const bumpCategories = useUiStore((s) => s.bumpCategories);
+  const bumpTags = useUiStore((s) => s.bumpTags);
 
-function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
-  const [tables, setTables] = useState<string[]>([]);
-  const [dbError, setDbError] = useState<string | null>(null);
+  const [seeding, setSeeding] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const db = await getDb();
-        const rows = await db.select<TableRow[]>(
-          "SELECT name FROM sqlite_master WHERE type IN ('table','view') AND name NOT LIKE 'sqlite_%' ORDER BY name",
-        );
-        setTables(rows.map((r) => r.name));
-      } catch (e) {
-        setDbError(String(e));
-      }
-    })();
-  }, []);
+  const hasFilters =
+    Boolean(query.trim()) ||
+    filters.type !== undefined ||
+    filters.categoryId !== undefined ||
+    Boolean(filters.favoritesOnly) ||
+    (filters.tagIds && filters.tagIds.length > 0);
 
-  async function greet() {
-    setGreetMsg(await invoke("greet", { name }));
-  }
+  if (loading || items.length > 0 || hasFilters) return null;
+
+  const onSeed = async () => {
+    setSeeding(true);
+    setError(null);
+    try {
+      await seedSampleData();
+      bumpItems();
+      bumpCategories();
+      bumpTags();
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setSeeding(false);
+    }
+  };
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center gap-6 p-8">
-      <h1 className="text-3xl font-semibold tracking-tight">Stash</h1>
-      <p className="text-sm text-muted-foreground">
-        Tauri + React + Tailwind + shadcn/ui — scaffold sanity check
-      </p>
+    <div className="absolute inset-0 flex items-center justify-center bg-background/90 backdrop-blur-sm z-10">
+      <div className="max-w-sm text-center space-y-4 p-6 border rounded-lg bg-card shadow-sm">
+        <div className="text-4xl">📚</div>
+        <h2 className="text-lg font-semibold">Your stash is empty</h2>
+        <p className="text-sm text-muted-foreground">
+          Load a handful of sample commands, prompts, and snippets to see
+          Stash in action.
+        </p>
+        <Button onClick={onSeed} disabled={seeding}>
+          {seeding ? "Loading…" : "Load sample data"}
+        </Button>
+        {error ? (
+          <div className="text-xs text-destructive">{error}</div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
 
-      <form
-        className="flex gap-2 w-full max-w-sm"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <Input
-          placeholder="Adınızı yazın..."
-          value={name}
-          onChange={(e) => setName(e.currentTarget.value)}
-        />
-        <Button type="submit">Greet</Button>
-      </form>
-
-      {greetMsg && (
-        <p className="text-sm rounded-md bg-muted px-3 py-2">{greetMsg}</p>
-      )}
-
-      <section className="w-full max-w-sm text-sm border rounded-md p-4">
-        <div className="font-medium mb-2">SQLite smoke test</div>
-        {dbError ? (
-          <div className="text-destructive">DB error: {dbError}</div>
-        ) : tables.length === 0 ? (
-          <div className="text-muted-foreground">Loading…</div>
-        ) : (
-          <ul className="list-disc list-inside text-muted-foreground">
-            {tables.map((t) => (
-              <li key={t}>{t}</li>
-            ))}
-          </ul>
-        )}
-      </section>
-    </main>
+function App() {
+  return (
+    <div className="relative h-screen w-screen flex bg-background text-foreground overflow-hidden">
+      <Sidebar />
+      <ItemList />
+      <ItemDetail />
+      <EmptyDatabaseOverlay />
+    </div>
   );
 }
 
