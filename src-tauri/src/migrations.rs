@@ -1,13 +1,29 @@
 use tauri_plugin_sql::{Migration, MigrationKind};
 
 pub fn migrations() -> Vec<Migration> {
-    vec![Migration {
-        version: 1,
-        description: "initial_schema",
-        sql: INITIAL_SCHEMA,
-        kind: MigrationKind::Up,
-    }]
+    vec![
+        Migration {
+            version: 1,
+            description: "initial_schema",
+            sql: INITIAL_SCHEMA,
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 2,
+            description: "settings_table",
+            sql: SETTINGS_TABLE,
+            kind: MigrationKind::Up,
+        },
+    ]
 }
+
+const SETTINGS_TABLE: &str = r#"
+CREATE TABLE settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+"#;
 
 const INITIAL_SCHEMA: &str = r#"
 -- categories first (items references it)

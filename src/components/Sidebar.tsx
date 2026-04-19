@@ -88,7 +88,11 @@ function CategoryRow({
   );
 }
 
-export function Sidebar() {
+type SidebarProps = {
+  onOpenSettings: () => void;
+};
+
+export function Sidebar({ onOpenSettings }: SidebarProps) {
   const { categories, loading } = useCategories();
   const filters = useUiStore((s) => s.filters);
   const setFilters = useUiStore((s) => s.setFilters);
@@ -193,6 +197,16 @@ export function Sidebar() {
           )}
         </div>
       </nav>
+
+      <div className="border-t p-2">
+        <button
+          onClick={onOpenSettings}
+          className="w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-sm text-muted-foreground hover:bg-accent/60 hover:text-foreground transition-colors"
+        >
+          <span className="text-base leading-none">⚙</span>
+          <span>Settings</span>
+        </button>
+      </div>
 
       <CategoryEditor
         open={editorOpen}
