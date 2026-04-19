@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { useItems } from "@/hooks/useItems";
 import { seedSampleData } from "@/lib/seed";
 import { matches } from "@/lib/shortcuts";
+import type { ThemeValue } from "@/lib/settings";
+import { applyTheme } from "@/lib/theme";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useUiStore } from "@/stores/uiStore";
 
@@ -71,6 +73,7 @@ function App() {
   const paletteShortcut = useSettingsStore(
     (s) => s.values["shortcut.commandPalette"],
   );
+  const theme = useSettingsStore((s) => s.values.theme) as ThemeValue;
 
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -78,6 +81,15 @@ function App() {
   useEffect(() => {
     loadSettings();
   }, [loadSettings]);
+
+  useEffect(() => {
+    applyTheme(theme);
+    if (theme !== "system") return;
+    const mql = window.matchMedia("(prefers-color-scheme: dark)");
+    const onChange = () => applyTheme("system");
+    mql.addEventListener("change", onChange);
+    return () => mql.removeEventListener("change", onChange);
+  }, [theme]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
