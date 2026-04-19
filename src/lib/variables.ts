@@ -75,12 +75,23 @@ export function extractVariableNames(content: string): string[] {
   return Array.from(names);
 }
 
+export function stripWrappingQuotes(value: string): string {
+  const trimmed = value.trim();
+  if (trimmed.length < 2) return value;
+  const first = trimmed[0];
+  const last = trimmed[trimmed.length - 1];
+  if ((first === "'" || first === '"') && first === last) {
+    return trimmed.slice(1, -1);
+  }
+  return value;
+}
+
 export function resolveVariables(
   content: string,
   values: Record<string, string>,
 ): string {
   return content.replace(
     /\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}/g,
-    (_, name: string) => values[name] ?? "",
+    (_, name: string) => stripWrappingQuotes(values[name] ?? ""),
   );
 }
