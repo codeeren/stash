@@ -101,12 +101,11 @@ export function CategoryEditor({
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="cat-icon">Icon (emoji)</Label>
+            <Label htmlFor="cat-icon">Icon (optional emoji)</Label>
             <Input
               id="cat-icon"
               value={form.icon}
               onChange={(e) => update("icon", e.currentTarget.value)}
-              placeholder="🛠"
               maxLength={4}
             />
           </div>
