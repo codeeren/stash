@@ -7,6 +7,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { ExecuteDialog } from "@/components/ExecuteDialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -122,6 +123,9 @@ export function VariableFillDialog({
   );
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [executeOpen, setExecuteOpen] = useState(false);
+
+  const isCommand = item.type === "command";
 
   useEffect(() => {
     if (open) {
@@ -183,11 +187,26 @@ export function VariableFillDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={onCopy}>
-            {copied ? "Copied ✓" : "Fill & Copy"}
+          <Button variant="outline" onClick={onCopy}>
+            {copied ? "Copied ✓" : "Copy"}
           </Button>
+          {isCommand ? (
+            <Button onClick={() => setExecuteOpen(true)}>Fill & Run</Button>
+          ) : null}
         </DialogFooter>
       </DialogContent>
+
+      {isCommand ? (
+        <ExecuteDialog
+          open={executeOpen}
+          onOpenChange={(o) => {
+            setExecuteOpen(o);
+            if (!o) onOpenChange(false);
+          }}
+          itemId={item.id}
+          resolvedCommand={preview}
+        />
+      ) : null}
     </Dialog>
   );
 }
