@@ -20,12 +20,15 @@ import {
 import { useCategories } from "@/hooks/useCategories";
 import { createItem, updateItem } from "@/lib/items";
 import { setItemTags } from "@/lib/tags";
-import {
-  extractVariableNames,
-  syncVariablesFromContent,
-} from "@/lib/variables";
+import { extractVariableNames, setItemVariables } from "@/lib/variables";
 import { useUiStore } from "@/stores/uiStore";
-import type { Item, ItemType, ItemWithRelations } from "@/types";
+import type {
+  Item,
+  ItemType,
+  ItemWithRelations,
+  NewVariable,
+  VariableFieldType,
+} from "@/types";
 
 const NO_CATEGORY = "__none__";
 
@@ -34,6 +37,24 @@ type ItemEditorProps = {
   onOpenChange: (open: boolean) => void;
   existing?: ItemWithRelations | null;
 };
+
+type VarConfig = {
+  label: string;
+  fieldType: VariableFieldType;
+  defaultValue: string;
+  placeholder: string;
+  options: string;
+};
+
+function emptyVarConfig(): VarConfig {
+  return {
+    label: "",
+    fieldType: "text",
+    defaultValue: "",
+    placeholder: "",
+    options: "",
+  };
+}
 
 type FormState = {
   type: ItemType;
@@ -71,6 +92,22 @@ function toFormState(item: ItemWithRelations): FormState {
   };
 }
 
+function toVarConfigs(
+  item: ItemWithRelations,
+): Record<string, VarConfig> {
+  const out: Record<string, VarConfig> = {};
+  for (const v of item.variables) {
+    out[v.name] = {
+      label: v.label ?? "",
+      fieldType: v.fieldType,
+      defaultValue: v.defaultValue ?? "",
+      placeholder: v.placeholder ?? "",
+      options: v.options ? v.options.join(", ") : "",
+    };
+  }
+  return out;
+}
+
 export function ItemEditor({
   open,
   onOpenChange,
@@ -82,12 +119,14 @@ export function ItemEditor({
   const setSelectedItemId = useUiStore((s) => s.setSelectedItemId);
 
   const [form, setForm] = useState<FormState>(EMPTY);
+  const [varConfigs, setVarConfigs] = useState<Record<string, VarConfig>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
       setForm(existing ? toFormState(existing) : EMPTY);
+      setVarConfigs(existing ? toVarConfigs(existing) : {});
       setError(null);
     }
   }, [open, existing]);
@@ -97,8 +136,21 @@ export function ItemEditor({
     [form.content],
   );
 
+  useEffect(() => {
+    setVarConfigs((prev) => {
+      const next: Record<string, VarConfig> = {};
+      for (const name of detectedVariables) {
+        next[name] = prev[name] ?? emptyVarConfig();
+      }
+      return next;
+    });
+  }, [detectedVariables]);
+
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
+
+  const updateVar = (name: string, patch: Partial<VarConfig>) =>
+    setVarConfigs((s) => ({ ...s, [name]: { ...s[name], ...patch } }));
 
   const onSave = async () => {
     if (!form.title.trim()) {
@@ -137,7 +189,29 @@ export function ItemEditor({
         .map((t) => t.trim())
         .filter(Boolean);
       await setItemTags(saved.id, tags);
-      await syncVariablesFromContent(saved.id, form.content);
+
+      const vars: Omit<NewVariable, "itemId">[] = detectedVariables.map(
+        (name, i) => {
+          const cfg = varConfigs[name] ?? emptyVarConfig();
+          const options =
+            cfg.fieldType === "select"
+              ? cfg.options
+                  .split(",")
+                  .map((o) => o.trim())
+                  .filter(Boolean)
+              : null;
+          return {
+            name,
+            label: cfg.label.trim() || null,
+            placeholder: cfg.placeholder.trim() || null,
+            defaultValue: cfg.defaultValue.trim() || null,
+            fieldType: cfg.fieldType,
+            options: options && options.length > 0 ? options : null,
+            sortOrder: i,
+          };
+        },
+      );
+      await setItemVariables(saved.id, vars);
 
       bumpItems();
       bumpTags();
@@ -252,6 +326,129 @@ export function ItemEditor({
               </div>
             ) : null}
           </div>
+
+          {detectedVariables.length > 0 ? (
+            <div className="space-y-2">
+              <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Variable settings
+              </div>
+              <div className="space-y-3">
+                {detectedVariables.map((name) => {
+                  const cfg = varConfigs[name] ?? emptyVarConfig();
+                  return (
+                    <div
+                      key={name}
+                      className="rounded-md border p-3 space-y-2.5"
+                    >
+                      <div className="flex items-center gap-2">
+                        <code className="text-xs text-foreground bg-muted rounded px-1.5 py-0.5">
+                          {`{{${name}}}`}
+                        </code>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2.5">
+                        <div className="space-y-1">
+                          <Label
+                            htmlFor={`lbl-${name}`}
+                            className="text-xs"
+                          >
+                            Label
+                          </Label>
+                          <Input
+                            id={`lbl-${name}`}
+                            value={cfg.label}
+                            onChange={(e) =>
+                              updateVar(name, {
+                                label: e.currentTarget.value,
+                              })
+                            }
+                            placeholder={name}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Type</Label>
+                          <Select
+                            value={cfg.fieldType}
+                            onValueChange={(v) =>
+                              updateVar(name, {
+                                fieldType: v as VariableFieldType,
+                              })
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="text">Text</SelectItem>
+                              <SelectItem value="textarea">
+                                Textarea
+                              </SelectItem>
+                              <SelectItem value="number">Number</SelectItem>
+                              <SelectItem value="select">Select</SelectItem>
+                              <SelectItem value="file">File path</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <Label
+                            htmlFor={`def-${name}`}
+                            className="text-xs"
+                          >
+                            Default
+                          </Label>
+                          <Input
+                            id={`def-${name}`}
+                            value={cfg.defaultValue}
+                            onChange={(e) =>
+                              updateVar(name, {
+                                defaultValue: e.currentTarget.value,
+                              })
+                            }
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label
+                            htmlFor={`ph-${name}`}
+                            className="text-xs"
+                          >
+                            Placeholder
+                          </Label>
+                          <Input
+                            id={`ph-${name}`}
+                            value={cfg.placeholder}
+                            onChange={(e) =>
+                              updateVar(name, {
+                                placeholder: e.currentTarget.value,
+                              })
+                            }
+                          />
+                        </div>
+                      </div>
+                      {cfg.fieldType === "select" ? (
+                        <div className="space-y-1">
+                          <Label
+                            htmlFor={`opt-${name}`}
+                            className="text-xs"
+                          >
+                            Options (comma-separated)
+                          </Label>
+                          <Input
+                            id={`opt-${name}`}
+                            value={cfg.options}
+                            onChange={(e) =>
+                              updateVar(name, {
+                                options: e.currentTarget.value,
+                              })
+                            }
+                            placeholder="small, medium, large"
+                          />
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
 
           <div className="space-y-1.5">
             <Label htmlFor="tags">Tags (comma-separated)</Label>
