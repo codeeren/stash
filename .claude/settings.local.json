@@ -10,7 +10,16 @@
       "Bash(git init *)",
       "Bash(git config *)",
       "Bash(git add *)",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "Bash(npx -y shadcn@latest add button input dialog --yes)",
+      "Bash(node -e \"const p=require\\('./package.json'\\);console.log\\('deps:',Object.keys\\(p.dependencies\\).join\\(' '\\)\\);console.log\\('devDeps:',Object.keys\\(p.devDependencies\\).join\\(' '\\)\\)\")",
+      "Bash(npx tsc *)",
+      "Bash(npm ls *)",
+      "Bash(git checkout *)",
+      "Bash(npx -y shadcn@latest add textarea label select --yes)",
+      "Bash(git commit -m 'feat: per-variable label and field-type customization in ItemEditor *)",
+      "Bash(git commit -m 'feat: category CRUD from sidebar *)",
+      "Bash(git commit -m 'fix: remove emoji placeholder from category icon input *)"
     ]
   }
 }

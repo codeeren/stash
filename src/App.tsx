@@ -1,10 +1,14 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { CommandPalette } from "@/components/CommandPalette";
 import { ItemDetail } from "@/components/ItemDetail";
 import { ItemList } from "@/components/ItemList";
+import { SettingsDialog } from "@/components/SettingsDialog";
 import { Sidebar } from "@/components/Sidebar";
 import { Button } from "@/components/ui/button";
 import { useItems } from "@/hooks/useItems";
 import { seedSampleData } from "@/lib/seed";
+import { matches } from "@/lib/shortcuts";
+import { useSettingsStore } from "@/stores/settingsStore";
 import { useUiStore } from "@/stores/uiStore";
 
 function EmptyDatabaseOverlay() {
@@ -63,12 +67,37 @@ function EmptyDatabaseOverlay() {
 }
 
 function App() {
+  const loadSettings = useSettingsStore((s) => s.load);
+  const paletteShortcut = useSettingsStore(
+    (s) => s.values["shortcut.commandPalette"],
+  );
+
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  useEffect(() => {
+    loadSettings();
+  }, [loadSettings]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (matches(e, paletteShortcut)) {
+        e.preventDefault();
+        setPaletteOpen((o) => !o);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [paletteShortcut]);
+
   return (
     <div className="relative h-screen w-screen flex bg-background text-foreground overflow-hidden">
-      <Sidebar />
+      <Sidebar onOpenSettings={() => setSettingsOpen(true)} />
       <ItemList />
       <ItemDetail />
       <EmptyDatabaseOverlay />
+      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
+      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
     </div>
   );
 }

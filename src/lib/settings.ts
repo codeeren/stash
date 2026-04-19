@@ -1,0 +1,45 @@
+import { getDb } from "@/lib/db";
+
+export type SettingKey = "shortcut.commandPalette";
+
+export const DEFAULT_SETTINGS: Record<SettingKey, string> = {
+  "shortcut.commandPalette": "Mod+K",
+};
+
+type SettingRow = { key: string; value: string };
+
+export async function getSetting(key: SettingKey): Promise<string> {
+  const db = await getDb();
+  const rows = await db.select<SettingRow[]>(
+    "SELECT key, value FROM settings WHERE key = $1",
+    [key],
+  );
+  return rows[0]?.value ?? DEFAULT_SETTINGS[key];
+}
+
+export async function getAllSettings(): Promise<Record<SettingKey, string>> {
+  const db = await getDb();
+  const rows = await db.select<SettingRow[]>("SELECT key, value FROM settings");
+  const out = { ...DEFAULT_SETTINGS };
+  for (const r of rows) {
+    if (r.key in DEFAULT_SETTINGS) {
+      out[r.key as SettingKey] = r.value;
+    }
+  }
+  return out;
+}
+
+export async function setSetting(
+  key: SettingKey,
+  value: string,
+): Promise<void> {
+  const db = await getDb();
+  await db.execute(
+    `INSERT INTO settings (key, value, updated_at)
+     VALUES ($1, $2, CURRENT_TIMESTAMP)
+     ON CONFLICT(key) DO UPDATE SET
+       value = excluded.value,
+       updated_at = CURRENT_TIMESTAMP`,
+    [key, value],
+  );
+}
