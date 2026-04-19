@@ -1,10 +1,6 @@
 mod migrations;
-
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
+mod shell;
+mod tray;
 
 pub const DB_URL: &str = "sqlite:stash.db";
 
@@ -17,7 +13,17 @@ pub fn run() {
                 .add_migrations(DB_URL, migrations::migrations())
                 .build(),
         )
-        .invoke_handler(tauri::generate_handler![greet])
+        .invoke_handler(tauri::generate_handler![shell::execute_command])
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                let _ = window.hide();
+                api.prevent_close();
+            }
+        })
+        .setup(|app| {
+            tray::setup(app.handle())?;
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

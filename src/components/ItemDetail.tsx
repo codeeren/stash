@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
+import { ExecuteDialog } from "@/components/ExecuteDialog";
 import { ItemEditor } from "@/components/ItemEditor";
 import { VariableFillDialog } from "@/components/VariableFillDialog";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ export function ItemDetail() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [fillOpen, setFillOpen] = useState(false);
+  const [executeOpen, setExecuteOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
   if (selectedItemId === null) {
@@ -51,6 +53,7 @@ export function ItemDetail() {
   }
 
   const hasVariables = item.variables.length > 0;
+  const isCommand = item.type === "command";
 
   const onCopy = async () => {
     await navigator.clipboard.writeText(item.content);
@@ -102,16 +105,23 @@ export function ItemDetail() {
             {hasVariables ? (
               <>
                 <Button size="sm" onClick={() => setFillOpen(true)}>
-                  Fill & Copy
+                  {isCommand ? "Fill & Run" : "Fill & Copy"}
                 </Button>
                 <Button size="sm" variant="outline" onClick={onCopy}>
                   {copied ? "Copied" : "Copy raw"}
                 </Button>
               </>
             ) : (
-              <Button size="sm" variant="outline" onClick={onCopy}>
-                {copied ? "Copied" : "Copy"}
-              </Button>
+              <>
+                {isCommand ? (
+                  <Button size="sm" onClick={() => setExecuteOpen(true)}>
+                    Run
+                  </Button>
+                ) : null}
+                <Button size="sm" variant="outline" onClick={onCopy}>
+                  {copied ? "Copied" : "Copy"}
+                </Button>
+              </>
             )}
             <Button
               size="sm"
@@ -204,6 +214,14 @@ export function ItemDetail() {
           open={fillOpen}
           onOpenChange={setFillOpen}
           item={item}
+        />
+      ) : null}
+      {isCommand && !hasVariables ? (
+        <ExecuteDialog
+          open={executeOpen}
+          onOpenChange={setExecuteOpen}
+          itemId={item.id}
+          resolvedCommand={item.content}
         />
       ) : null}
       <ConfirmDeleteDialog
