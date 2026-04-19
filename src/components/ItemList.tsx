@@ -1,3 +1,6 @@
+import { useState } from "react";
+import { ItemEditor } from "@/components/ItemEditor";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useItems } from "@/hooks/useItems";
 import { cn } from "@/lib/utils";
@@ -63,15 +66,27 @@ export function ItemList() {
   const searchQuery = useUiStore((s) => s.searchQuery);
   const setSearchQuery = useUiStore((s) => s.setSearchQuery);
 
+  const [editorOpen, setEditorOpen] = useState(false);
+
   return (
     <section className="w-96 shrink-0 border-r flex flex-col">
-      <div className="p-2 border-b">
+      <div className="p-2 border-b flex items-center gap-2">
         <Input
           placeholder="Search items…"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.currentTarget.value)}
         />
+        <Button
+          size="icon"
+          variant="outline"
+          title="New item"
+          onClick={() => setEditorOpen(true)}
+        >
+          +
+        </Button>
       </div>
+      <ItemEditor open={editorOpen} onOpenChange={setEditorOpen} />
+
       <div className="flex-1 overflow-y-auto">
         {error ? (
           <div className="p-4 text-sm text-destructive">{error}</div>

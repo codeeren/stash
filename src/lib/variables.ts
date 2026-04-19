@@ -40,6 +40,34 @@ export async function setItemVariables(
   }
 }
 
+export async function syncVariablesFromContent(
+  itemId: number,
+  content: string,
+): Promise<void> {
+  const db = await getDb();
+  const names = extractVariableNames(content);
+  const existing = await listVariablesForItem(itemId);
+
+  const existingByName = new Map(existing.map((v) => [v.name, v]));
+  const activeNames = new Set(names);
+
+  for (const v of existing) {
+    if (!activeNames.has(v.name)) {
+      await db.execute("DELETE FROM variables WHERE id = $1", [v.id]);
+    }
+  }
+
+  let nextOrder = existing.filter((v) => activeNames.has(v.name)).length;
+  for (const name of names) {
+    if (!existingByName.has(name)) {
+      await db.execute(
+        "INSERT INTO variables (item_id, name, field_type, sort_order) VALUES ($1, $2, 'text', $3)",
+        [itemId, name, nextOrder++],
+      );
+    }
+  }
+}
+
 export function extractVariableNames(content: string): string[] {
   const matches = content.matchAll(/\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}/g);
   const names = new Set<string>();
