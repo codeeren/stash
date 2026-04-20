@@ -6,6 +6,8 @@ import { SettingsDialog } from "@/components/SettingsDialog";
 import { Sidebar } from "@/components/Sidebar";
 import { Button } from "@/components/ui/button";
 import { useItems } from "@/hooks/useItems";
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { seedSampleData } from "@/lib/seed";
 import { matches } from "@/lib/shortcuts";
 import type { ThemeValue } from "@/lib/settings";
@@ -74,6 +76,13 @@ function App() {
     (s) => s.values["shortcut.commandPalette"],
   );
   const theme = useSettingsStore((s) => s.values.theme) as ThemeValue;
+  const trayEnabled = useSettingsStore(
+    (s) => s.values["tray.enabled"] !== "false",
+  );
+
+  const requestFocusSearch = useUiStore((s) => s.requestFocusSearch);
+  const requestNewItem = useUiStore((s) => s.requestNewItem);
+  const requestPrimaryAction = useUiStore((s) => s.requestPrimaryAction);
 
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -81,6 +90,10 @@ function App() {
   useEffect(() => {
     loadSettings();
   }, [loadSettings]);
+
+  useEffect(() => {
+    void invoke("set_tray_visible", { visible: trayEnabled });
+  }, [trayEnabled]);
 
   useEffect(() => {
     applyTheme(theme);
@@ -96,11 +109,35 @@ function App() {
       if (matches(e, paletteShortcut)) {
         e.preventDefault();
         setPaletteOpen((o) => !o);
+        return;
+      }
+
+      const mod = e.metaKey || e.ctrlKey;
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      const inInput =
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        target?.isContentEditable === true;
+
+      if (e.key === "Enter" && !inInput && !mod) {
+        requestPrimaryAction();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [paletteShortcut]);
+  }, [paletteShortcut, requestPrimaryAction]);
+
+  useEffect(() => {
+    const unlisten = Promise.all([
+      listen("menu:settings", () => setSettingsOpen(true)),
+      listen("menu:new_item", () => requestNewItem()),
+      listen("menu:find", () => requestFocusSearch()),
+    ]);
+    return () => {
+      unlisten.then((fns) => fns.forEach((fn) => fn()));
+    };
+  }, [requestFocusSearch, requestNewItem]);
 
   return (
     <div className="relative h-screen w-screen flex bg-background text-foreground overflow-hidden">

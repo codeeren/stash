@@ -20,6 +20,15 @@ type UiStore = {
 
   tagsVersion: number;
   bumpTags: () => void;
+
+  focusSearchSignal: number;
+  requestFocusSearch: () => void;
+
+  newItemSignal: number;
+  requestNewItem: () => void;
+
+  primaryActionSignal: number;
+  requestPrimaryAction: () => void;
 };
 
 const emptyFilters: SearchFilters = {};
@@ -45,4 +54,15 @@ export const useUiStore = create<UiStore>((set) => ({
 
   tagsVersion: 0,
   bumpTags: () => set((s) => ({ tagsVersion: s.tagsVersion + 1 })),
+
+  focusSearchSignal: 0,
+  requestFocusSearch: () =>
+    set((s) => ({ focusSearchSignal: s.focusSearchSignal + 1 })),
+
+  newItemSignal: 0,
+  requestNewItem: () => set((s) => ({ newItemSignal: s.newItemSignal + 1 })),
+
+  primaryActionSignal: 0,
+  requestPrimaryAction: () =>
+    set((s) => ({ primaryActionSignal: s.primaryActionSignal + 1 })),
 }));

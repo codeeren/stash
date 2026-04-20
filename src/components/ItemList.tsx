@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ItemEditor } from "@/components/ItemEditor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -65,13 +65,70 @@ export function ItemList() {
   const setSelectedItemId = useUiStore((s) => s.setSelectedItemId);
   const searchQuery = useUiStore((s) => s.searchQuery);
   const setSearchQuery = useUiStore((s) => s.setSearchQuery);
+  const focusSearchSignal = useUiStore((s) => s.focusSearchSignal);
+  const newItemSignal = useUiStore((s) => s.newItemSignal);
 
   const [editorOpen, setEditorOpen] = useState(false);
+  const searchRef = useRef<HTMLInputElement | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (focusSearchSignal > 0) searchRef.current?.focus();
+  }, [focusSearchSignal]);
+
+  useEffect(() => {
+    if (newItemSignal > 0) setEditorOpen(true);
+  }, [newItemSignal]);
+
+  useEffect(() => {
+    if (!selectedItemId) return;
+    const row = listRef.current?.querySelector<HTMLElement>(
+      `[data-item-id="${selectedItemId}"]`,
+    );
+    row?.scrollIntoView({ block: "nearest" });
+  }, [selectedItemId]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      const inInput =
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        target?.isContentEditable === true;
+
+      if (e.key === "Escape" && target === searchRef.current) {
+        if (searchQuery) {
+          e.preventDefault();
+          setSearchQuery("");
+        }
+        return;
+      }
+
+      if (inInput) return;
+
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        if (items.length === 0) return;
+        e.preventDefault();
+        const idx = items.findIndex((i) => i.id === selectedItemId);
+        const next =
+          e.key === "ArrowDown"
+            ? Math.min(items.length - 1, idx < 0 ? 0 : idx + 1)
+            : Math.max(0, idx < 0 ? 0 : idx - 1);
+        setSelectedItemId(items[next].id);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [items, selectedItemId, setSelectedItemId, searchQuery, setSearchQuery]);
+
+  const hasSearch = searchQuery.trim().length > 0;
 
   return (
     <section className="w-96 shrink-0 border-r flex flex-col">
       <div className="p-2 border-b flex items-center gap-2">
         <Input
+          ref={searchRef}
           placeholder="Search items…"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.currentTarget.value)}
@@ -87,23 +144,32 @@ export function ItemList() {
       </div>
       <ItemEditor open={editorOpen} onOpenChange={setEditorOpen} />
 
-      <div className="flex-1 overflow-y-auto">
+      <div ref={listRef} className="flex-1 overflow-y-auto">
         {error ? (
           <div className="p-4 text-sm text-destructive">{error}</div>
         ) : loading ? (
           <div className="p-4 text-sm text-muted-foreground">Loading…</div>
         ) : items.length === 0 ? (
-          <div className="p-4 text-sm text-muted-foreground">
-            No items match.
+          <div className="p-6 text-center space-y-1">
+            <div className="text-2xl">{hasSearch ? "🔍" : "📭"}</div>
+            <div className="text-sm font-medium">
+              {hasSearch ? "No matches" : "No items here"}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {hasSearch
+                ? `Nothing matches “${searchQuery}”.`
+                : "Create a new item with +"}
+            </div>
           </div>
         ) : (
           items.map((item) => (
-            <ItemRow
-              key={item.id}
-              item={item}
-              active={selectedItemId === item.id}
-              onClick={() => setSelectedItemId(item.id)}
-            />
+            <div key={item.id} data-item-id={item.id}>
+              <ItemRow
+                item={item}
+                active={selectedItemId === item.id}
+                onClick={() => setSelectedItemId(item.id)}
+              />
+            </div>
           ))
         )}
       </div>
