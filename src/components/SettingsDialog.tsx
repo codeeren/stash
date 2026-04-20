@@ -221,6 +221,25 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 })}
               </div>
             </div>
+            <label className="flex items-start gap-2 pt-1 cursor-pointer">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={draft["tray.enabled"] !== "false"}
+                onChange={(e) => {
+                  const v = e.currentTarget.checked ? "true" : "false";
+                  update("tray.enabled", v);
+                  void setValue("tray.enabled", v);
+                }}
+              />
+              <div className="space-y-0.5">
+                <div className="text-sm">Show menu bar icon</div>
+                <div className="text-xs text-muted-foreground">
+                  Off: closing the window quits Stash. On: closing hides
+                  to the menu bar.
+                </div>
+              </div>
+            </label>
           </div>
 
           <div className="space-y-3">
