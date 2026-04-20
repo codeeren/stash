@@ -1,8 +1,25 @@
+use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Manager,
 };
+
+pub const TRAY_ID: &str = "main";
+pub static TRAY_VISIBLE: AtomicBool = AtomicBool::new(true);
+
+pub fn is_tray_visible() -> bool {
+    TRAY_VISIBLE.load(Ordering::Relaxed)
+}
+
+#[tauri::command]
+pub fn set_tray_visible(app: AppHandle, visible: bool) -> Result<(), String> {
+    if let Some(tray) = app.tray_by_id(TRAY_ID) {
+        tray.set_visible(visible).map_err(|e| e.to_string())?;
+    }
+    TRAY_VISIBLE.store(visible, Ordering::Relaxed);
+    Ok(())
+}
 
 fn toggle_window(app: &AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
@@ -36,7 +53,7 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
         .cloned()
         .ok_or_else(|| tauri::Error::AssetNotFound("tray icon".into()))?;
 
-    TrayIconBuilder::with_id("main")
+    TrayIconBuilder::with_id(TRAY_ID)
         .icon(icon)
         .icon_as_template(true)
         .menu(&menu)
