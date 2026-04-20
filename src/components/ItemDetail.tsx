@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { ExecuteDialog } from "@/components/ExecuteDialog";
 import { ItemEditor } from "@/components/ItemEditor";
@@ -12,6 +12,7 @@ export function ItemDetail() {
   const selectedItemId = useUiStore((s) => s.selectedItemId);
   const setSelectedItemId = useUiStore((s) => s.setSelectedItemId);
   const bumpItems = useUiStore((s) => s.bumpItems);
+  const primaryActionSignal = useUiStore((s) => s.primaryActionSignal);
   const { item, loading, error } = useItemDetail(selectedItemId);
 
   const [editorOpen, setEditorOpen] = useState(false);
@@ -19,6 +20,37 @@ export function ItemDetail() {
   const [fillOpen, setFillOpen] = useState(false);
   const [executeOpen, setExecuteOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  const lastSignalRef = useRef(0);
+  useEffect(() => {
+    if (primaryActionSignal === 0 || primaryActionSignal === lastSignalRef.current)
+      return;
+    lastSignalRef.current = primaryActionSignal;
+    if (!item) return;
+    if (editorOpen || deleteOpen || fillOpen || executeOpen) return;
+
+    if (item.variables.length > 0) {
+      setFillOpen(true);
+    } else if (item.type === "command") {
+      setExecuteOpen(true);
+    } else {
+      void (async () => {
+        await navigator.clipboard.writeText(item.content);
+        await recordItemUse(item.id);
+        bumpItems();
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1200);
+      })();
+    }
+  }, [
+    primaryActionSignal,
+    item,
+    editorOpen,
+    deleteOpen,
+    fillOpen,
+    executeOpen,
+    bumpItems,
+  ]);
 
   if (selectedItemId === null) {
     return (

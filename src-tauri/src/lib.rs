@@ -1,3 +1,4 @@
+mod menu;
 mod migrations;
 mod shell;
 mod tray;
@@ -13,14 +14,20 @@ pub fn run() {
                 .add_migrations(DB_URL, migrations::migrations())
                 .build(),
         )
-        .invoke_handler(tauri::generate_handler![shell::execute_command])
+        .invoke_handler(tauri::generate_handler![
+            shell::execute_command,
+            tray::set_tray_visible
+        ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                let _ = window.hide();
-                api.prevent_close();
+                if tray::is_tray_visible() {
+                    let _ = window.hide();
+                    api.prevent_close();
+                }
             }
         })
         .setup(|app| {
+            menu::setup(app.handle())?;
             tray::setup(app.handle())?;
             Ok(())
         })
