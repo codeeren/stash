@@ -106,7 +106,8 @@ function App() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (matches(e, paletteShortcut)) {
+      const effectiveShortcut = paletteShortcut?.trim() || "Mod+K";
+      if (matches(e, effectiveShortcut)) {
         e.preventDefault();
         setPaletteOpen((o) => !o);
         return;
