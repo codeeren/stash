@@ -2,10 +2,18 @@ import { useState } from "react";
 import { CategoryEditor } from "@/components/CategoryEditor";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { useCategories } from "@/hooks/useCategories";
+import { useTags } from "@/hooks/useTags";
 import { deleteCategory } from "@/lib/categories";
 import { cn } from "@/lib/utils";
 import { useUiStore } from "@/stores/uiStore";
-import type { Category } from "@/types";
+import type { Category, ItemType } from "@/types";
+
+const TYPE_OPTIONS: { value: ItemType; label: string; icon: string }[] = [
+  { value: "command", label: "Commands", icon: "⌘" },
+  { value: "prompt", label: "Prompts", icon: "💬" },
+  { value: "snippet", label: "Snippets", icon: "{ }" },
+  { value: "note", label: "Notes", icon: "📝" },
+];
 
 type SidebarRowProps = {
   active: boolean;
@@ -94,11 +102,21 @@ type SidebarProps = {
 
 export function Sidebar({ onOpenSettings }: SidebarProps) {
   const { categories, loading } = useCategories();
+  const { tags } = useTags();
   const filters = useUiStore((s) => s.filters);
   const setFilters = useUiStore((s) => s.setFilters);
   const setSelectedItemId = useUiStore((s) => s.setSelectedItemId);
   const bumpCategories = useUiStore((s) => s.bumpCategories);
   const bumpItems = useUiStore((s) => s.bumpItems);
+
+  const activeTagIds = filters.tagIds ?? [];
+  const toggleTag = (id: number) => {
+    const next = activeTagIds.includes(id)
+      ? activeTagIds.filter((x) => x !== id)
+      : [...activeTagIds, id];
+    setFilters({ tagIds: next.length > 0 ? next : undefined });
+    setSelectedItemId(null);
+  };
 
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<Category | null>(null);
@@ -110,6 +128,10 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
   };
   const toggleFavorites = () => {
     setFilters({ favoritesOnly: !filters.favoritesOnly, categoryId: undefined });
+    setSelectedItemId(null);
+  };
+  const toggleType = (t: ItemType) => {
+    setFilters({ type: filters.type === t ? undefined : t });
     setSelectedItemId(null);
   };
 
@@ -196,6 +218,83 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
             </div>
           )}
         </div>
+
+        <div>
+          <div className="px-3 pb-1 flex items-center justify-between text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            <span>Types</span>
+            {filters.type ? (
+              <button
+                onClick={() => {
+                  setFilters({ type: undefined });
+                  setSelectedItemId(null);
+                }}
+                title="Clear type filter"
+                className="text-[10px] normal-case tracking-normal hover:text-foreground"
+              >
+                clear
+              </button>
+            ) : null}
+          </div>
+          <div className="flex flex-wrap gap-1 px-2">
+            {TYPE_OPTIONS.map((opt) => {
+              const active = filters.type === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  onClick={() => toggleType(opt.value)}
+                  className={cn(
+                    "text-xs px-2 py-0.5 rounded-full transition-colors flex items-center gap-1",
+                    active
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary text-secondary-foreground hover:bg-accent",
+                  )}
+                >
+                  <span className="leading-none">{opt.icon}</span>
+                  <span>{opt.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {tags.length > 0 ? (
+          <div>
+            <div className="px-3 pb-1 flex items-center justify-between text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              <span>Tags</span>
+              {activeTagIds.length > 0 ? (
+                <button
+                  onClick={() => {
+                    setFilters({ tagIds: undefined });
+                    setSelectedItemId(null);
+                  }}
+                  title="Clear tag filters"
+                  className="text-[10px] normal-case tracking-normal hover:text-foreground"
+                >
+                  clear
+                </button>
+              ) : null}
+            </div>
+            <div className="flex flex-wrap gap-1 px-2">
+              {tags.map((t) => {
+                const active = activeTagIds.includes(t.id);
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => toggleTag(t.id)}
+                    className={cn(
+                      "text-xs px-2 py-0.5 rounded-full transition-colors",
+                      active
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-secondary text-secondary-foreground hover:bg-accent",
+                    )}
+                  >
+                    #{t.name}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
       </nav>
 
       <div className="border-t p-2">

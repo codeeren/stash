@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { listItems, searchItems } from "@/lib/items";
+import type { SortValue } from "@/lib/settings";
+import { useSettingsStore } from "@/stores/settingsStore";
 import { useUiStore } from "@/stores/uiStore";
 import type { Item } from "@/types";
 
@@ -13,6 +15,7 @@ export function useItems(): UseItemsResult {
   const filters = useUiStore((s) => s.filters);
   const query = useUiStore((s) => s.searchQuery);
   const version = useUiStore((s) => s.itemsVersion);
+  const sort = useSettingsStore((s) => s.values["items.sort"]) as SortValue;
 
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,7 +28,7 @@ export function useItems(): UseItemsResult {
 
     const fetcher = query.trim()
       ? searchItems(query, filters)
-      : listItems(filters);
+      : listItems(filters, sort);
 
     fetcher
       .then((rows) => {
@@ -42,7 +45,7 @@ export function useItems(): UseItemsResult {
     return () => {
       cancelled = true;
     };
-  }, [filters, query, version]);
+  }, [filters, query, version, sort]);
 
   return { items, loading, error };
 }

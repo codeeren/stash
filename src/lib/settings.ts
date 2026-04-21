@@ -3,14 +3,18 @@ import { getDb } from "@/lib/db";
 export type SettingKey =
   | "shortcut.commandPalette"
   | "theme"
-  | "tray.enabled";
+  | "tray.enabled"
+  | "items.sort";
 
 export type ThemeValue = "light" | "dark" | "system";
+
+export type SortValue = "recent" | "mostUsed" | "newest" | "alpha";
 
 export const DEFAULT_SETTINGS: Record<SettingKey, string> = {
   "shortcut.commandPalette": "Mod+K",
   theme: "system",
   "tray.enabled": "true",
+  "items.sort": "recent",
 };
 
 type SettingRow = { key: string; value: string };

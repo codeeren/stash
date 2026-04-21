@@ -9,6 +9,7 @@ import {
   rowToTag,
   rowToVariable,
 } from "@/lib/rows";
+import type { SortValue } from "@/lib/settings";
 import type {
   Item,
   ItemUpdate,
@@ -17,11 +18,28 @@ import type {
   SearchFilters,
 } from "@/types";
 
+function orderByClause(sort: SortValue): string {
+  switch (sort) {
+    case "mostUsed":
+      return "is_favorite DESC, use_count DESC, COALESCE(last_used_at, created_at) DESC";
+    case "newest":
+      return "is_favorite DESC, created_at DESC";
+    case "alpha":
+      return "is_favorite DESC, LOWER(title) ASC";
+    case "recent":
+    default:
+      return "is_favorite DESC, COALESCE(last_used_at, created_at) DESC";
+  }
+}
+
 function boolToInt(b: boolean | undefined): number | undefined {
   return b === undefined ? undefined : b ? 1 : 0;
 }
 
-export async function listItems(filters: SearchFilters = {}): Promise<Item[]> {
+export async function listItems(
+  filters: SearchFilters = {},
+  sort: SortValue = "recent",
+): Promise<Item[]> {
   const db = await getDb();
 
   const where: string[] = [];
@@ -47,7 +65,7 @@ export async function listItems(filters: SearchFilters = {}): Promise<Item[]> {
     params.push(...filters.tagIds);
   }
 
-  const sql = `SELECT * FROM items${where.length ? ` WHERE ${where.join(" AND ")}` : ""} ORDER BY is_favorite DESC, COALESCE(last_used_at, created_at) DESC`;
+  const sql = `SELECT * FROM items${where.length ? ` WHERE ${where.join(" AND ")}` : ""} ORDER BY ${orderByClause(sort)}`;
   const rows = await db.select<ItemRow[]>(sql, params);
   return rows.map(rowToItem);
 }
@@ -209,6 +227,47 @@ export async function toggleFavorite(id: number): Promise<void> {
     "UPDATE items SET is_favorite = 1 - is_favorite WHERE id = $1",
     [id],
   );
+}
+
+export async function duplicateItem(id: number): Promise<Item> {
+  const full = await getItemWithRelations(id);
+  if (!full) throw new Error(`duplicateItem: item ${id} not found`);
+
+  const copy = await createItem({
+    type: full.type,
+    title: `${full.title} (copy)`,
+    content: full.content,
+    language: full.language ?? undefined,
+    description: full.description ?? undefined,
+    categoryId: full.categoryId ?? undefined,
+    isFavorite: false,
+  });
+
+  if (full.tags.length > 0) {
+    const { setItemTags } = await import("@/lib/tags");
+    await setItemTags(
+      copy.id,
+      full.tags.map((t) => t.name),
+    );
+  }
+
+  if (full.variables.length > 0) {
+    const { setItemVariables } = await import("@/lib/variables");
+    await setItemVariables(
+      copy.id,
+      full.variables.map((v) => ({
+        name: v.name,
+        label: v.label ?? undefined,
+        placeholder: v.placeholder ?? undefined,
+        defaultValue: v.defaultValue ?? undefined,
+        fieldType: v.fieldType,
+        options: v.options ?? undefined,
+        sortOrder: v.sortOrder,
+      })),
+    );
+  }
+
+  return copy;
 }
 
 export async function recordItemUse(id: number): Promise<void> {

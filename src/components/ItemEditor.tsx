@@ -244,7 +244,30 @@ export function ItemEditor({
             </div>
 
             <div className="space-y-1.5">
-              <Label>Type</Label>
+              <div className="flex items-center gap-1.5">
+                <Label>Type</Label>
+                <span
+                  tabIndex={0}
+                  aria-label="Type info"
+                  className="group relative text-muted-foreground hover:text-foreground focus:text-foreground cursor-help text-xs leading-none select-none outline-none"
+                >
+                  ⓘ
+                  <span
+                    role="tooltip"
+                    className="pointer-events-none absolute left-1/2 top-full z-50 mt-1.5 w-64 -translate-x-1/2 rounded-md border bg-popover px-3 py-2 text-xs font-normal normal-case tracking-normal text-popover-foreground shadow-md opacity-0 transition-opacity group-hover:opacity-100 group-focus:opacity-100"
+                  >
+                    <span className="block">
+                      <b>Command</b> — runs in Terminal.
+                    </span>
+                    <span className="block">
+                      <b>Prompt / Snippet / Note</b> — copies to clipboard.
+                    </span>
+                    <span className="mt-1 block text-muted-foreground">
+                      Use Categories and Tags to group items further.
+                    </span>
+                  </span>
+                </span>
+              </div>
               <Select
                 value={form.type}
                 onValueChange={(v) => update("type", v as ItemType)}
