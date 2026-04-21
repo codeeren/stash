@@ -2,10 +2,17 @@ import { useEffect, useRef, useState } from "react";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { ExecuteDialog } from "@/components/ExecuteDialog";
 import { ItemEditor } from "@/components/ItemEditor";
+import { MarkdownView } from "@/components/MarkdownView";
 import { VariableFillDialog } from "@/components/VariableFillDialog";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { useItemDetail } from "@/hooks/useItemDetail";
-import { deleteItem, recordItemUse, toggleFavorite } from "@/lib/items";
+import {
+  deleteItem,
+  duplicateItem,
+  recordItemUse,
+  toggleFavorite,
+} from "@/lib/items";
 import { useUiStore } from "@/stores/uiStore";
 
 export function ItemDetail() {
@@ -20,6 +27,7 @@ export function ItemDetail() {
   const [fillOpen, setFillOpen] = useState(false);
   const [executeOpen, setExecuteOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [rawMode, setRawMode] = useState(false);
 
   const lastSignalRef = useRef(0);
   useEffect(() => {
@@ -106,6 +114,12 @@ export function ItemDetail() {
     bumpItems();
   };
 
+  const onDuplicate = async () => {
+    const copy = await duplicateItem(item.id);
+    bumpItems();
+    setSelectedItemId(copy.id);
+  };
+
   return (
     <section className="flex-1 overflow-y-auto flex flex-col">
       <header className="px-6 py-4 border-b">
@@ -158,14 +172,6 @@ export function ItemDetail() {
             <Button
               size="sm"
               variant="outline"
-              onClick={onToggleFavorite}
-              title={item.isFavorite ? "Unfavorite" : "Favorite"}
-            >
-              {item.isFavorite ? "★" : "☆"}
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
               onClick={() => setEditorOpen(true)}
             >
               Edit
@@ -177,14 +183,99 @@ export function ItemDetail() {
             >
               Delete
             </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onToggleFavorite}
+              title={item.isFavorite ? "Unfavorite" : "Favorite"}
+            >
+              {item.isFavorite ? "★" : "☆"}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onDuplicate}
+              title="Duplicate"
+              aria-label="Duplicate"
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 16 16"
+                aria-hidden="true"
+              >
+                {/* back document (solid) */}
+                <rect
+                  x="5"
+                  y="1"
+                  width="10"
+                  height="12"
+                  rx="2"
+                  fill="currentColor"
+                />
+                {/* front document body — fills with button bg to occlude */}
+                <rect
+                  x="1"
+                  y="3"
+                  width="10"
+                  height="12"
+                  rx="2"
+                  fill="var(--background)"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                />
+                {/* 3 content bars */}
+                <rect x="3.2" y="6" width="5.6" height="1.2" rx="0.6" fill="currentColor" />
+                <rect x="3.2" y="8.4" width="5.6" height="1.2" rx="0.6" fill="currentColor" />
+                <rect x="3.2" y="10.8" width="5.6" height="1.2" rx="0.6" fill="currentColor" />
+              </svg>
+            </Button>
           </div>
         </div>
       </header>
 
       <div className="px-6 py-4 space-y-4 flex-1">
-        <pre className="text-xs bg-muted rounded-md p-3 overflow-x-auto whitespace-pre-wrap break-words font-mono">
-          {item.content}
-        </pre>
+        {(() => {
+          const canRender = item.type === "prompt" || item.type === "note";
+          const showRendered = canRender && !rawMode;
+          return (
+            <div className="space-y-2">
+              {canRender ? (
+                <div className="flex items-center justify-end gap-1 text-xs">
+                  <button
+                    onClick={() => setRawMode(false)}
+                    className={cn(
+                      "px-2 py-0.5 rounded transition-colors",
+                      !rawMode
+                        ? "bg-secondary text-secondary-foreground"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    Rendered
+                  </button>
+                  <button
+                    onClick={() => setRawMode(true)}
+                    className={cn(
+                      "px-2 py-0.5 rounded transition-colors",
+                      rawMode
+                        ? "bg-secondary text-secondary-foreground"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    Raw
+                  </button>
+                </div>
+              ) : null}
+              {showRendered ? (
+                <MarkdownView content={item.content} />
+              ) : (
+                <pre className="text-xs bg-muted rounded-md p-3 overflow-x-auto whitespace-pre-wrap break-words font-mono">
+                  {item.content}
+                </pre>
+              )}
+            </div>
+          );
+        })()}
 
         {item.tags.length > 0 ? (
           <div className="flex flex-wrap gap-1.5">

@@ -2,10 +2,26 @@ import { useEffect, useRef, useState } from "react";
 import { ItemEditor } from "@/components/ItemEditor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useItems } from "@/hooks/useItems";
+import type { SortValue } from "@/lib/settings";
 import { cn } from "@/lib/utils";
+import { useSettingsStore } from "@/stores/settingsStore";
 import { useUiStore } from "@/stores/uiStore";
 import type { Item, ItemType } from "@/types";
+
+const SORT_OPTIONS: { value: SortValue; label: string }[] = [
+  { value: "recent", label: "Recently used" },
+  { value: "mostUsed", label: "Most used" },
+  { value: "newest", label: "Newest" },
+  { value: "alpha", label: "A → Z" },
+];
 
 const TYPE_LABEL: Record<ItemType, string> = {
   command: "CMD",
@@ -67,6 +83,8 @@ export function ItemList() {
   const setSearchQuery = useUiStore((s) => s.setSearchQuery);
   const focusSearchSignal = useUiStore((s) => s.focusSearchSignal);
   const newItemSignal = useUiStore((s) => s.newItemSignal);
+  const sort = useSettingsStore((s) => s.values["items.sort"]) as SortValue;
+  const setSetting = useSettingsStore((s) => s.set);
 
   const [editorOpen, setEditorOpen] = useState(false);
   const searchRef = useRef<HTMLInputElement | null>(null);
@@ -123,6 +141,7 @@ export function ItemList() {
   }, [items, selectedItemId, setSelectedItemId, searchQuery, setSearchQuery]);
 
   const hasSearch = searchQuery.trim().length > 0;
+  const sortDisabled = hasSearch;
 
   return (
     <section className="w-96 shrink-0 border-r flex flex-col">
@@ -173,8 +192,29 @@ export function ItemList() {
           ))
         )}
       </div>
-      <div className="px-3 py-1.5 border-t text-xs text-muted-foreground">
-        {loading ? "…" : `${items.length} item${items.length === 1 ? "" : "s"}`}
+      <div className="px-3 py-1.5 border-t text-xs text-muted-foreground flex items-center justify-between gap-2">
+        <span>
+          {loading ? "…" : `${items.length} item${items.length === 1 ? "" : "s"}`}
+        </span>
+        <Select
+          value={sort}
+          onValueChange={(v) => void setSetting("items.sort", v)}
+          disabled={sortDisabled}
+        >
+          <SelectTrigger
+            className="h-6 text-xs border-0 bg-transparent shadow-none px-1 gap-1 hover:bg-accent hover:text-foreground focus:ring-0 focus:ring-offset-0 w-auto"
+            title={sortDisabled ? "Search uses relevance ranking" : "Sort items"}
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent align="end">
+            {SORT_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
     </section>
   );
