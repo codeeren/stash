@@ -1,5 +1,6 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{
+    image::Image,
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Manager,
@@ -48,10 +49,9 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
     let quit_item = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&show_item, &quit_item])?;
 
-    let icon = app
-        .default_window_icon()
-        .cloned()
-        .ok_or_else(|| tauri::Error::AssetNotFound("tray icon".into()))?;
+    // Dedicated monochrome tray icon (black-on-transparent) so macOS can tint
+    // it correctly via template mode for both light and dark menu bars.
+    let icon = Image::from_bytes(include_bytes!("../icons/tray@2x.png"))?;
 
     TrayIconBuilder::with_id(TRAY_ID)
         .icon(icon)
