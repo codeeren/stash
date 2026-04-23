@@ -19,6 +19,7 @@ import {
 import {
   DEFAULT_SETTINGS,
   type SettingKey,
+  type SortValue,
   type ThemeValue,
 } from "@/lib/settings";
 import { cn } from "@/lib/utils";
@@ -240,6 +241,41 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 </div>
               </div>
             </label>
+            {draft["tray.enabled"] !== "false" ? (
+              <div className="space-y-2 pl-6">
+                <Label>Menu bar item order</Label>
+                <div className="inline-flex rounded-md border p-0.5 flex-wrap">
+                  {(
+                    [
+                      { v: "newest", label: "Newest" },
+                      { v: "recent", label: "Recently used" },
+                      { v: "mostUsed", label: "Most used" },
+                      { v: "alpha", label: "A → Z" },
+                    ] as { v: SortValue; label: string }[]
+                  ).map((opt) => {
+                    const active = draft["tray.sort"] === opt.v;
+                    return (
+                      <button
+                        key={opt.v}
+                        type="button"
+                        onClick={() => {
+                          update("tray.sort", opt.v);
+                          void setValue("tray.sort", opt.v);
+                        }}
+                        className={cn(
+                          "px-3 py-1 text-xs rounded transition-colors",
+                          active
+                            ? "bg-accent text-accent-foreground"
+                            : "text-muted-foreground hover:text-foreground",
+                        )}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
           </div>
 
           <div className="space-y-3">

@@ -16,7 +16,10 @@ pub fn run() {
         )
         .invoke_handler(tauri::generate_handler![
             shell::execute_command,
-            tray::set_tray_visible
+            tray::set_tray_visible,
+            tray::set_tray_items,
+            tray::set_tray_title,
+            tray::show_main_window
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {

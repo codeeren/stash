@@ -4,6 +4,7 @@ export type SettingKey =
   | "shortcut.commandPalette"
   | "theme"
   | "tray.enabled"
+  | "tray.sort"
   | "items.sort";
 
 export type ThemeValue = "light" | "dark" | "system";
@@ -14,6 +15,7 @@ export const DEFAULT_SETTINGS: Record<SettingKey, string> = {
   "shortcut.commandPalette": "Mod+K",
   theme: "system",
   "tray.enabled": "true",
+  "tray.sort": "newest",
   "items.sort": "recent",
 };
 

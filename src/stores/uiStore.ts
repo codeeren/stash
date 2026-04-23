@@ -29,6 +29,10 @@ type UiStore = {
 
   primaryActionSignal: number;
   requestPrimaryAction: () => void;
+
+  pendingTrayItemId: number | null;
+  requestTrayItem: (id: number) => void;
+  clearPendingTrayItem: () => void;
 };
 
 const emptyFilters: SearchFilters = {};
@@ -65,4 +69,9 @@ export const useUiStore = create<UiStore>((set) => ({
   primaryActionSignal: 0,
   requestPrimaryAction: () =>
     set((s) => ({ primaryActionSignal: s.primaryActionSignal + 1 })),
+
+  pendingTrayItemId: null,
+  requestTrayItem: (id) =>
+    set({ selectedItemId: id, pendingTrayItemId: id }),
+  clearPendingTrayItem: () => set({ pendingTrayItemId: null }),
 }));

@@ -20,6 +20,8 @@ export function ItemDetail() {
   const setSelectedItemId = useUiStore((s) => s.setSelectedItemId);
   const bumpItems = useUiStore((s) => s.bumpItems);
   const primaryActionSignal = useUiStore((s) => s.primaryActionSignal);
+  const pendingTrayItemId = useUiStore((s) => s.pendingTrayItemId);
+  const clearPendingTrayItem = useUiStore((s) => s.clearPendingTrayItem);
   const { item, loading, error } = useItemDetail(selectedItemId);
 
   const [editorOpen, setEditorOpen] = useState(false);
@@ -33,9 +35,9 @@ export function ItemDetail() {
   useEffect(() => {
     if (primaryActionSignal === 0 || primaryActionSignal === lastSignalRef.current)
       return;
-    lastSignalRef.current = primaryActionSignal;
-    if (!item) return;
+    if (!item || item.id !== selectedItemId) return;
     if (editorOpen || deleteOpen || fillOpen || executeOpen) return;
+    lastSignalRef.current = primaryActionSignal;
 
     if (item.variables.length > 0) {
       setFillOpen(true);
@@ -53,10 +55,43 @@ export function ItemDetail() {
   }, [
     primaryActionSignal,
     item,
+    selectedItemId,
     editorOpen,
     deleteOpen,
     fillOpen,
     executeOpen,
+    bumpItems,
+  ]);
+
+  // Handle tray activation: act once the pending item is loaded.
+  useEffect(() => {
+    if (pendingTrayItemId === null) return;
+    if (!item || item.id !== pendingTrayItemId) return;
+    if (editorOpen || deleteOpen || fillOpen || executeOpen) return;
+
+    clearPendingTrayItem();
+
+    if (item.variables.length > 0) {
+      setFillOpen(true);
+    } else if (item.type === "command") {
+      setExecuteOpen(true);
+    } else {
+      void (async () => {
+        await navigator.clipboard.writeText(item.content);
+        await recordItemUse(item.id);
+        bumpItems();
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1200);
+      })();
+    }
+  }, [
+    pendingTrayItemId,
+    item,
+    editorOpen,
+    deleteOpen,
+    fillOpen,
+    executeOpen,
+    clearPendingTrayItem,
     bumpItems,
   ]);
 

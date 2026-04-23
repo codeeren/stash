@@ -1,9 +1,10 @@
+use serde::Deserialize;
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{
     image::Image,
-    menu::{Menu, MenuItem},
-    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    AppHandle, Manager,
+    menu::{Menu, MenuItem, PredefinedMenuItem, Submenu},
+    tray::TrayIconBuilder,
+    AppHandle, Emitter, Manager,
 };
 
 pub const TRAY_ID: &str = "main";
@@ -22,18 +23,75 @@ pub fn set_tray_visible(app: AppHandle, visible: bool) -> Result<(), String> {
     Ok(())
 }
 
-fn toggle_window(app: &AppHandle) {
-    if let Some(window) = app.get_webview_window("main") {
-        match window.is_visible() {
-            Ok(true) => {
-                let _ = window.hide();
-            }
-            _ => {
-                let _ = window.show();
-                let _ = window.set_focus();
-            }
-        }
+#[derive(Deserialize)]
+pub struct TrayItemPayload {
+    pub id: i64,
+    pub title: String,
+}
+
+#[tauri::command]
+pub fn set_tray_items(
+    app: AppHandle,
+    favorites: Vec<TrayItemPayload>,
+    recent: Vec<TrayItemPayload>,
+) -> Result<(), String> {
+    apply_menu(&app, &favorites, &recent).map_err(|e| e.to_string())
+}
+
+fn truncate_title(s: &str) -> String {
+    const MAX: usize = 48;
+    let count = s.chars().count();
+    if count <= MAX {
+        s.to_string()
+    } else {
+        let mut out: String = s.chars().take(MAX).collect();
+        out.push('…');
+        out
     }
+}
+
+fn apply_menu(
+    app: &AppHandle,
+    favorites: &[TrayItemPayload],
+    recent: &[TrayItemPayload],
+) -> tauri::Result<()> {
+    let menu = Menu::new(app)?;
+
+    if !favorites.is_empty() {
+        let sub = Submenu::with_id(app, "fav-sub", "⭐ Favorites", true)?;
+        for p in favorites {
+            let id = format!("item:{}", p.id);
+            let mi =
+                MenuItem::with_id(app, &id, &truncate_title(&p.title), true, None::<&str>)?;
+            sub.append(&mi)?;
+        }
+        menu.append(&sub)?;
+    }
+
+    if !recent.is_empty() {
+        let sub = Submenu::with_id(app, "items-sub", "📋 Items", true)?;
+        for p in recent {
+            let id = format!("item:{}", p.id);
+            let mi =
+                MenuItem::with_id(app, &id, &truncate_title(&p.title), true, None::<&str>)?;
+            sub.append(&mi)?;
+        }
+        menu.append(&sub)?;
+    }
+
+    if !favorites.is_empty() || !recent.is_empty() {
+        menu.append(&PredefinedMenuItem::separator(app)?)?;
+    }
+
+    let show_item = MenuItem::with_id(app, "show", "Show Stash", true, None::<&str>)?;
+    let quit_item = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+    menu.append(&show_item)?;
+    menu.append(&quit_item)?;
+
+    if let Some(tray) = app.tray_by_id(TRAY_ID) {
+        tray.set_menu(Some(menu))?;
+    }
+    Ok(())
 }
 
 fn show_window(app: &AppHandle) {
@@ -42,6 +100,26 @@ fn show_window(app: &AppHandle) {
         let _ = window.unminimize();
         let _ = window.set_focus();
     }
+}
+
+#[tauri::command]
+pub fn show_main_window(app: AppHandle) -> Result<(), String> {
+    show_window(&app);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn set_tray_title(app: AppHandle, title: String) -> Result<(), String> {
+    if let Some(tray) = app.tray_by_id(TRAY_ID) {
+        let effective: Option<&str> = if title.is_empty() { None } else { Some(&title) };
+        tray.set_title(effective).map_err(|e| e.to_string())?;
+        // Belt-and-suspenders: on macOS some paths ignore Option::None once a
+        // title has been set, so also push an explicit empty string.
+        if effective.is_none() {
+            let _ = tray.set_title(Some(""));
+        }
+    }
+    Ok(())
 }
 
 pub fn setup(app: &AppHandle) -> tauri::Result<()> {
@@ -57,20 +135,21 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
         .icon(icon)
         .icon_as_template(true)
         .menu(&menu)
-        .show_menu_on_left_click(false)
-        .on_menu_event(|app, event| match event.id.as_ref() {
-            "show" => show_window(app),
-            "quit" => app.exit(0),
-            _ => {}
-        })
-        .on_tray_icon_event(|tray, event| {
-            if let TrayIconEvent::Click {
-                button: MouseButton::Left,
-                button_state: MouseButtonState::Up,
-                ..
-            } = event
-            {
-                toggle_window(tray.app_handle());
+        .show_menu_on_left_click(true)
+        .on_menu_event(|app, event| {
+            let id = event.id.as_ref();
+            match id {
+                "show" => show_window(app),
+                "quit" => app.exit(0),
+                other if other.starts_with("item:") => {
+                    if let Ok(n) = other[5..].parse::<i64>() {
+                        // Frontend decides whether to show the window
+                        // (copy-only items are handled silently with a
+                        // native notification).
+                        let _ = app.emit("tray:activate", n);
+                    }
+                }
+                _ => {}
             }
         })
         .build(app)?;

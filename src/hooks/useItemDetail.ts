@@ -25,6 +25,7 @@ export function useItemDetail(id: number | null): UseItemDetailResult {
     }
 
     let cancelled = false;
+    setItem((prev) => (prev && prev.id === id ? prev : null));
     setLoading(true);
     setError(null);
 

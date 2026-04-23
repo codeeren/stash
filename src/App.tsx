@@ -8,9 +8,14 @@ import { Button } from "@/components/ui/button";
 import { useItems } from "@/hooks/useItems";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import {
+  getItemWithRelations,
+  listItems,
+  recordItemUse,
+} from "@/lib/items";
 import { seedSampleData } from "@/lib/seed";
 import { matches } from "@/lib/shortcuts";
-import type { ThemeValue } from "@/lib/settings";
+import type { SortValue, ThemeValue } from "@/lib/settings";
 import { applyTheme } from "@/lib/theme";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useUiStore } from "@/stores/uiStore";
@@ -79,10 +84,14 @@ function App() {
   const trayEnabled = useSettingsStore(
     (s) => s.values["tray.enabled"] !== "false",
   );
+  const traySort = useSettingsStore((s) => s.values["tray.sort"]) as SortValue;
 
   const requestFocusSearch = useUiStore((s) => s.requestFocusSearch);
   const requestNewItem = useUiStore((s) => s.requestNewItem);
   const requestPrimaryAction = useUiStore((s) => s.requestPrimaryAction);
+  const requestTrayItem = useUiStore((s) => s.requestTrayItem);
+  const bumpItems = useUiStore((s) => s.bumpItems);
+  const itemsVersion = useUiStore((s) => s.itemsVersion);
 
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -134,11 +143,66 @@ function App() {
       listen("menu:settings", () => setSettingsOpen(true)),
       listen("menu:new_item", () => requestNewItem()),
       listen("menu:find", () => requestFocusSearch()),
+      listen<number>("tray:activate", async (evt) => {
+        const id = evt.payload;
+        try {
+          const full = await getItemWithRelations(id);
+          if (!full) return;
+          const copyOnly =
+            full.variables.length === 0 && full.type !== "command";
+          if (copyOnly) {
+            // Silent copy + a brief "✓ Copied" label next to the tray icon.
+            await navigator.clipboard.writeText(full.content);
+            await recordItemUse(full.id);
+            bumpItems();
+            try {
+              await invoke("set_tray_title", { title: "✓ Copied" });
+              setTimeout(() => {
+                void invoke("set_tray_title", { title: "" });
+              }, 1500);
+            } catch {
+              // Title flash is best-effort.
+            }
+          } else {
+            // Command / has-vars items need the window (confirmation or form).
+            await invoke("show_main_window");
+            requestTrayItem(id);
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }),
     ]);
     return () => {
       unlisten.then((fns) => fns.forEach((fn) => fn()));
     };
-  }, [requestFocusSearch, requestNewItem]);
+  }, [requestFocusSearch, requestNewItem, requestTrayItem, bumpItems]);
+
+  // Sync tray quick-access menu with current favorites + items list.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const [favRows, allRows] = await Promise.all([
+          listItems({ favoritesOnly: true }, traySort),
+          listItems({}, traySort),
+        ]);
+        if (cancelled) return;
+        const favorites = favRows
+          .slice(0, 20)
+          .map((i) => ({ id: i.id, title: i.title }));
+        const recent = allRows
+          .slice(0, 20)
+          .map((i) => ({ id: i.id, title: i.title }));
+        await invoke("set_tray_items", { favorites, recent });
+      } catch {
+        // Tray update is best-effort; ignore failures.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [itemsVersion, trayEnabled, traySort]);
 
   return (
     <div className="relative h-screen w-screen flex bg-background text-foreground overflow-hidden">
