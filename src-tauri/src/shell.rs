@@ -10,12 +10,21 @@ pub fn execute_command(command: String) -> Result<(), String> {
         return Err("Command is empty.".into());
     }
 
+    // `do script` always creates a new window; if we just `activate` first,
+    // Terminal's freshly-launched empty window plus `do script`'s window
+    // means two windows. So: activate, and if there is already a front
+    // window (either pre-existing or launched by `activate`), reuse it.
+    let escaped = applescript_escape(&command);
     let script = format!(
         "tell application \"Terminal\"\n\
            activate\n\
-           do script \"{}\"\n\
+           if (count of windows) > 0 then\n\
+             do script \"{0}\" in front window\n\
+           else\n\
+             do script \"{0}\"\n\
+           end if\n\
          end tell",
-        applescript_escape(&command)
+        escaped
     );
 
     let output = Command::new("osascript")
