@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCategories } from "@/hooks/useCategories";
+import { useTags } from "@/hooks/useTags";
 import { createItem, updateItem } from "@/lib/items";
 import { setItemTags } from "@/lib/tags";
 import { extractVariableNames, setItemVariables } from "@/lib/variables";
@@ -114,6 +115,7 @@ export function ItemEditor({
   existing,
 }: ItemEditorProps) {
   const { categories } = useCategories();
+  const { tags: allTags } = useTags();
   const bumpItems = useUiStore((s) => s.bumpItems);
   const bumpTags = useUiStore((s) => s.bumpTags);
   const setSelectedItemId = useUiStore((s) => s.setSelectedItemId);
@@ -481,6 +483,42 @@ export function ItemEditor({
               onChange={(e) => update("tagsInput", e.currentTarget.value)}
               placeholder="backup, sync, ffmpeg"
             />
+            {(() => {
+              const selected = new Set(
+                form.tagsInput
+                  .split(",")
+                  .map((t) => t.trim().toLowerCase())
+                  .filter(Boolean),
+              );
+              const suggestions = allTags.filter(
+                (t) => !selected.has(t.name.toLowerCase()),
+              );
+              if (suggestions.length === 0) return null;
+              const addTag = (name: string) => {
+                const current = form.tagsInput.trim();
+                const sep = current.length === 0 || current.endsWith(",")
+                  ? ""
+                  : ", ";
+                update("tagsInput", `${current}${sep}${name}`);
+              };
+              return (
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  <span className="text-xs text-muted-foreground self-center">
+                    Existing:
+                  </span>
+                  {suggestions.map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => addTag(t.name)}
+                      className="text-xs rounded-full border px-2 py-0.5 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                    >
+                      #{t.name}
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
 
           <label className="flex items-center gap-2 text-sm">

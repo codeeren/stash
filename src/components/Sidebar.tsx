@@ -4,9 +4,10 @@ import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { useCategories } from "@/hooks/useCategories";
 import { useTags } from "@/hooks/useTags";
 import { deleteCategory } from "@/lib/categories";
+import { deleteTag } from "@/lib/tags";
 import { cn } from "@/lib/utils";
 import { useUiStore } from "@/stores/uiStore";
-import type { Category, ItemType } from "@/types";
+import type { Category, ItemType, Tag } from "@/types";
 
 const TYPE_OPTIONS: { value: ItemType; label: string; icon: string }[] = [
   { value: "command", label: "Commands", icon: "⌘" },
@@ -121,6 +122,9 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<Category | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Category | null>(null);
+  const [deleteTagTarget, setDeleteTagTarget] = useState<Tag | null>(null);
+  const [tagEditMode, setTagEditMode] = useState(false);
+  const bumpTags = useUiStore((s) => s.bumpTags);
 
   const selectCategory = (categoryId: number | null | undefined) => {
     setFilters({ categoryId, favoritesOnly: false });
@@ -261,35 +265,67 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
           <div>
             <div className="px-3 pb-1 flex items-center justify-between text-xs font-medium uppercase tracking-wider text-muted-foreground">
               <span>Tags</span>
-              {activeTagIds.length > 0 ? (
+              <div className="flex items-center gap-2">
+                {activeTagIds.length > 0 ? (
+                  <button
+                    onClick={() => {
+                      setFilters({ tagIds: undefined });
+                      setSelectedItemId(null);
+                    }}
+                    title="Clear tag filters"
+                    className="text-[10px] normal-case tracking-normal hover:text-foreground"
+                  >
+                    clear
+                  </button>
+                ) : null}
                 <button
-                  onClick={() => {
-                    setFilters({ tagIds: undefined });
-                    setSelectedItemId(null);
-                  }}
-                  title="Clear tag filters"
-                  className="text-[10px] normal-case tracking-normal hover:text-foreground"
+                  onClick={() => setTagEditMode((v) => !v)}
+                  title={tagEditMode ? "Finish editing" : "Edit tags"}
+                  className={cn(
+                    "text-[10px] normal-case tracking-normal hover:text-foreground",
+                    tagEditMode && "text-foreground",
+                  )}
                 >
-                  clear
+                  {tagEditMode ? "done" : "edit"}
                 </button>
-              ) : null}
+              </div>
             </div>
             <div className="flex flex-wrap gap-1 px-2">
               {tags.map((t) => {
                 const active = activeTagIds.includes(t.id);
                 return (
-                  <button
+                  <span
                     key={t.id}
-                    onClick={() => toggleTag(t.id)}
                     className={cn(
-                      "text-xs px-2 py-0.5 rounded-full transition-colors",
+                      "group/tag inline-flex items-center text-xs rounded-full transition-colors",
                       active
                         ? "bg-primary text-primary-foreground"
                         : "bg-secondary text-secondary-foreground hover:bg-accent",
                     )}
                   >
-                    #{t.name}
-                  </button>
+                    <button
+                      onClick={() => toggleTag(t.id)}
+                      className={cn(
+                        "py-0.5 rounded-l-full",
+                        tagEditMode ? "pl-2 pr-1" : "px-2 rounded-r-full",
+                      )}
+                    >
+                      #{t.name}
+                    </button>
+                    {tagEditMode ? (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteTagTarget(t);
+                        }}
+                        aria-label={`Delete tag ${t.name}`}
+                        title="Delete tag"
+                        className="pr-1.5 pl-0.5 py-0.5 rounded-r-full opacity-70 hover:opacity-100 transition-opacity"
+                      >
+                        ×
+                      </button>
+                    ) : null}
+                  </span>
                 );
               })}
             </div>
@@ -322,6 +358,30 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
         }
         description="Items in this category will move to Uncategorized. This cannot be undone."
         onConfirm={onConfirmDelete}
+      />
+      <ConfirmDeleteDialog
+        open={deleteTagTarget !== null}
+        onOpenChange={(o) => {
+          if (!o) setDeleteTagTarget(null);
+        }}
+        title={
+          deleteTagTarget
+            ? `Delete tag “#${deleteTagTarget.name}”?`
+            : "Delete?"
+        }
+        description="The tag will be removed from all items. This cannot be undone."
+        onConfirm={async () => {
+          if (!deleteTagTarget) return;
+          await deleteTag(deleteTagTarget.id);
+          if (activeTagIds.includes(deleteTagTarget.id)) {
+            const next = activeTagIds.filter(
+              (id) => id !== deleteTagTarget.id,
+            );
+            setFilters({ tagIds: next.length > 0 ? next : undefined });
+          }
+          bumpTags();
+          bumpItems();
+        }}
       />
     </aside>
   );

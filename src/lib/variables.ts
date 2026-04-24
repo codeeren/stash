@@ -68,10 +68,20 @@ export async function syncVariablesFromContent(
   }
 }
 
+// Variable placeholders: `{{name}}`. The name can be any non-empty string
+// that does not contain braces — this includes Unicode letters (Turkish
+// characters like ş, ç, ö, ğ, ı, İ, ü), digits, underscores, spaces, and
+// hyphens. Surrounding whitespace is trimmed so `{{ foo }}` and `{{foo}}`
+// refer to the same variable.
+const VAR_PATTERN = /\{\{([^{}]+)\}\}/g;
+
 export function extractVariableNames(content: string): string[] {
-  const matches = content.matchAll(/\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}/g);
+  const matches = content.matchAll(VAR_PATTERN);
   const names = new Set<string>();
-  for (const m of matches) names.add(m[1]);
+  for (const m of matches) {
+    const name = m[1].trim();
+    if (name) names.add(name);
+  }
   return Array.from(names);
 }
 
@@ -90,8 +100,9 @@ export function resolveVariables(
   content: string,
   values: Record<string, string>,
 ): string {
-  return content.replace(
-    /\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}/g,
-    (_, name: string) => stripWrappingQuotes(values[name] ?? ""),
-  );
+  return content.replace(VAR_PATTERN, (match, rawName: string) => {
+    const name = rawName.trim();
+    if (!name) return match;
+    return stripWrappingQuotes(values[name] ?? "");
+  });
 }
