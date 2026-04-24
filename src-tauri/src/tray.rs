@@ -57,6 +57,11 @@ fn apply_menu(
 ) -> tauri::Result<()> {
     let menu = Menu::new(app)?;
 
+    let new_item =
+        MenuItem::with_id(app, "new-item", "＋ New item", true, None::<&str>)?;
+    menu.append(&new_item)?;
+    menu.append(&PredefinedMenuItem::separator(app)?)?;
+
     if !favorites.is_empty() {
         let sub = Submenu::with_id(app, "fav-sub", "⭐ Favorites", true)?;
         for p in favorites {
@@ -123,9 +128,12 @@ pub fn set_tray_title(app: AppHandle, title: String) -> Result<(), String> {
 }
 
 pub fn setup(app: &AppHandle) -> tauri::Result<()> {
+    let new_item =
+        MenuItem::with_id(app, "new-item", "＋ New item", true, None::<&str>)?;
+    let sep = PredefinedMenuItem::separator(app)?;
     let show_item = MenuItem::with_id(app, "show", "Show Stash", true, None::<&str>)?;
     let quit_item = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&show_item, &quit_item])?;
+    let menu = Menu::with_items(app, &[&new_item, &sep, &show_item, &quit_item])?;
 
     // Dedicated monochrome tray icon (black-on-transparent) so macOS can tint
     // it correctly via template mode for both light and dark menu bars.
@@ -141,6 +149,10 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
             match id {
                 "show" => show_window(app),
                 "quit" => app.exit(0),
+                "new-item" => {
+                    show_window(app);
+                    let _ = app.emit("menu:new_item", ());
+                }
                 other if other.starts_with("item:") => {
                     if let Ok(n) = other[5..].parse::<i64>() {
                         // Frontend decides whether to show the window
