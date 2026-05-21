@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { getVersion } from "@tauri-apps/api/app";
 import {
   Dialog,
   DialogContent,
@@ -53,8 +54,15 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const [busy, setBusy] = useState<null | "export" | "import">(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, setPending] = useState<PendingImport | null>(null);
+  const [appVersion, setAppVersion] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    getVersion()
+      .then(setAppVersion)
+      .catch(() => setAppVersion(null));
+  }, []);
 
   useEffect(() => {
     if (open) {
@@ -352,6 +360,11 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
               {error}
             </div>
           ) : null}
+
+          <div className="flex items-center justify-between border-t pt-3 text-xs text-muted-foreground">
+            <span>Stash</span>
+            <span>Version {appVersion ?? "—"}</span>
+          </div>
         </div>
 
         <DialogFooter>
