@@ -10,18 +10,23 @@ pub fn execute_command(command: String) -> Result<(), String> {
         return Err("Command is empty.".into());
     }
 
-    // `do script` always creates a new window; if we just `activate` first,
-    // Terminal's freshly-launched empty window plus `do script`'s window
-    // means two windows. So: activate, and if there is already a front
-    // window (either pre-existing or launched by `activate`), reuse it.
+    // Window selection logic:
+    //   - No windows yet (cold launch): reuse the window `activate` created,
+    //     so we don't end up with two windows.
+    //   - Front tab is busy (something already running): open a NEW window,
+    //     otherwise `do script ... in front window` would queue behind the
+    //     running process and never execute.
+    //   - Front tab is idle: reuse it.
     let escaped = applescript_escape(&command);
     let script = format!(
         "tell application \"Terminal\"\n\
            activate\n\
-           if (count of windows) > 0 then\n\
-             do script \"{0}\" in front window\n\
-           else\n\
+           if (count of windows) is 0 then\n\
              do script \"{0}\"\n\
+           else if busy of selected tab of front window then\n\
+             do script \"{0}\"\n\
+           else\n\
+             do script \"{0}\" in front window\n\
            end if\n\
          end tell",
         escaped
