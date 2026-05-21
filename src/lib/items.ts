@@ -70,6 +70,57 @@ export async function listItems(
   return rows.map(rowToItem);
 }
 
+export type SidebarCounts = {
+  total: number;
+  favorites: number;
+  uncategorized: number;
+  byType: Record<string, number>;
+  byCategory: Record<number, number>;
+  byTag: Record<number, number>;
+};
+
+// Item counts for the sidebar badges. A handful of cheap GROUP BY queries —
+// SQLite resolves these instantly even with thousands of items.
+export async function getSidebarCounts(): Promise<SidebarCounts> {
+  const db = await getDb();
+
+  const typeRows = await db.select<{ type: string; c: number }[]>(
+    "SELECT type, COUNT(*) c FROM items GROUP BY type",
+  );
+  const [favRow] = await db.select<{ c: number }[]>(
+    "SELECT COUNT(*) c FROM items WHERE is_favorite = 1",
+  );
+  const [uncatRow] = await db.select<{ c: number }[]>(
+    "SELECT COUNT(*) c FROM items WHERE category_id IS NULL",
+  );
+  const catRows = await db.select<{ category_id: number; c: number }[]>(
+    "SELECT category_id, COUNT(*) c FROM items WHERE category_id IS NOT NULL GROUP BY category_id",
+  );
+  const tagRows = await db.select<{ tag_id: number; c: number }[]>(
+    "SELECT tag_id, COUNT(*) c FROM item_tags GROUP BY tag_id",
+  );
+
+  const byType: Record<string, number> = {};
+  let total = 0;
+  for (const r of typeRows) {
+    byType[r.type] = r.c;
+    total += r.c;
+  }
+  const byCategory: Record<number, number> = {};
+  for (const r of catRows) byCategory[r.category_id] = r.c;
+  const byTag: Record<number, number> = {};
+  for (const r of tagRows) byTag[r.tag_id] = r.c;
+
+  return {
+    total,
+    favorites: favRow?.c ?? 0,
+    uncategorized: uncatRow?.c ?? 0,
+    byType,
+    byCategory,
+    byTag,
+  };
+}
+
 export async function searchItems(
   query: string,
   filters: Omit<SearchFilters, "query"> = {},

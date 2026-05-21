@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { CategoryIcon } from "@/components/CategoryIcon";
 import {
   Dialog,
   DialogContent,
@@ -301,8 +302,10 @@ export function ItemEditor({
                   <SelectItem value={NO_CATEGORY}>(Uncategorized)</SelectItem>
                   {categories.map((c) => (
                     <SelectItem key={c.id} value={String(c.id)}>
-                      {c.icon ? `${c.icon} ` : ""}
-                      {c.name}
+                      <span className="flex items-center gap-1.5">
+                        <CategoryIcon icon={c.icon} className="h-3.5 w-3.5" />
+                        {c.name}
+                      </span>
                     </SelectItem>
                   ))}
                 </SelectContent>

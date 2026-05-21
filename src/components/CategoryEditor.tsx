@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { PlusIcon } from "lucide-react";
+import { CategoryIcon } from "@/components/CategoryIcon";
 import {
   Dialog,
   DialogContent,
@@ -10,7 +12,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createCategory, updateCategory } from "@/lib/categories";
-import { EMOJI_GROUPS, searchEmoji } from "@/lib/emoji";
+import {
+  CATEGORY_ICON_GROUPS,
+  searchCategoryIcons,
+} from "@/lib/categoryIcons";
 import { cn } from "@/lib/utils";
 import { useUiStore } from "@/stores/uiStore";
 import type { Category } from "@/types";
@@ -28,19 +33,6 @@ type FormState = {
 
 const EMPTY: FormState = { name: "", icon: "" };
 
-// The icon field only accepts a single emoji. Split the input into grapheme
-// clusters (so multi-codepoint emoji like flags stay intact), drop anything
-// that is not pictographic, and keep the last emoji entered.
-function sanitizeEmoji(input: string): string {
-  const graphemes = Array.from(
-    new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(input),
-    (s) => s.segment,
-  );
-  const emoji = graphemes.filter((g) => /\p{Extended_Pictographic}/u.test(g));
-  return emoji.length > 0 ? emoji[emoji.length - 1] : "";
-}
-
-
 export function CategoryEditor({
   open,
   onOpenChange,
@@ -52,22 +44,18 @@ export function CategoryEditor({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [emojiQuery, setEmojiQuery] = useState("");
+  const [iconQuery, setIconQuery] = useState("");
 
   useEffect(() => {
     if (open) {
       setForm(
         existing
-          ? {
-              name: existing.name,
-              // Drop any non-emoji legacy value so the picker shows clean.
-              icon: sanitizeEmoji(existing.icon ?? ""),
-            }
+          ? { name: existing.name, icon: existing.icon ?? "" }
           : EMPTY,
       );
       setError(null);
       setPickerOpen(false);
-      setEmojiQuery("");
+      setIconQuery("");
     }
   }, [open, existing]);
 
@@ -84,7 +72,7 @@ export function CategoryEditor({
     try {
       const payload = {
         name: form.name.trim(),
-        icon: sanitizeEmoji(form.icon) || null,
+        icon: form.icon || null,
       };
       if (existing) {
         await updateCategory(existing.id, payload);
@@ -99,6 +87,16 @@ export function CategoryEditor({
       setSaving(false);
     }
   };
+
+  const pickIcon = (key: string) => {
+    update("icon", key);
+    setPickerOpen(false);
+  };
+  const cellClass = (key: string) =>
+    cn(
+      "h-8 w-8 flex items-center justify-center rounded hover:bg-accent transition-colors",
+      form.icon === key && "bg-accent text-accent-foreground",
+    );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -126,11 +124,13 @@ export function CategoryEditor({
               <button
                 type="button"
                 onClick={() => setPickerOpen((v) => !v)}
-                className="h-10 w-10 flex items-center justify-center rounded-md border text-xl hover:bg-accent transition-colors"
+                className="h-10 w-10 flex items-center justify-center rounded-md border hover:bg-accent transition-colors"
                 title="Choose an icon"
               >
-                {form.icon || (
-                  <span className="text-muted-foreground text-base">＋</span>
+                {form.icon ? (
+                  <CategoryIcon icon={form.icon} className="h-5 w-5" />
+                ) : (
+                  <PlusIcon className="h-4 w-4 text-muted-foreground" />
                 )}
               </button>
               {form.icon ? (
@@ -143,7 +143,7 @@ export function CategoryEditor({
                 </button>
               ) : (
                 <span className="text-xs text-muted-foreground">
-                  Click to choose an emoji
+                  Click to choose an icon
                 </span>
               )}
             </div>
@@ -152,75 +152,63 @@ export function CategoryEditor({
               <div className="mt-1 rounded-md border">
                 <div className="p-2 border-b">
                   <Input
-                    value={emojiQuery}
-                    onChange={(e) => setEmojiQuery(e.currentTarget.value)}
+                    value={iconQuery}
+                    onChange={(e) => setIconQuery(e.currentTarget.value)}
                     placeholder="Search — e.g. rocket, folder, star"
                     autoFocus
                   />
                 </div>
                 <div className="max-h-52 overflow-y-auto p-2">
-                  {(() => {
-                    const pick = (char: string) => {
-                      update("icon", char);
-                      setPickerOpen(false);
-                    };
-                    const cellClass = (char: string) =>
-                      cn(
-                        "h-8 w-8 flex items-center justify-center rounded text-lg hover:bg-accent transition-colors",
-                        form.icon === char && "bg-accent",
-                      );
-
-                    if (emojiQuery.trim()) {
-                      const results = searchEmoji(emojiQuery);
+                  {iconQuery.trim() ? (
+                    (() => {
+                      const results = searchCategoryIcons(iconQuery);
                       if (results.length === 0) {
                         return (
                           <div className="text-xs text-muted-foreground text-center py-4">
-                            No emoji match “{emojiQuery.trim()}”.
+                            No icons match “{iconQuery.trim()}”.
                           </div>
                         );
                       }
                       return (
                         <div className="grid grid-cols-8 gap-1">
-                          {results.map((entry) => (
+                          {results.map((def) => (
                             <button
-                              key={entry.char}
+                              key={def.key}
                               type="button"
-                              onClick={() => pick(entry.char)}
-                              title={entry.keywords}
-                              className={cellClass(entry.char)}
+                              onClick={() => pickIcon(def.key)}
+                              title={def.key}
+                              className={cellClass(def.key)}
                             >
-                              {entry.char}
+                              <def.Icon className="h-4 w-4" />
                             </button>
                           ))}
                         </div>
                       );
-                    }
-
-                    return (
-                      <div className="space-y-2">
-                        {EMOJI_GROUPS.map((group) => (
-                          <div key={group.label}>
-                            <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground px-1 pb-0.5">
-                              {group.label}
-                            </div>
-                            <div className="grid grid-cols-8 gap-1">
-                              {group.emoji.map((entry) => (
-                                <button
-                                  key={entry.char}
-                                  type="button"
-                                  onClick={() => pick(entry.char)}
-                                  title={entry.keywords}
-                                  className={cellClass(entry.char)}
-                                >
-                                  {entry.char}
-                                </button>
-                              ))}
-                            </div>
+                    })()
+                  ) : (
+                    <div className="space-y-2">
+                      {CATEGORY_ICON_GROUPS.map((group) => (
+                        <div key={group.label}>
+                          <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground px-1 pb-0.5">
+                            {group.label}
                           </div>
-                        ))}
-                      </div>
-                    );
-                  })()}
+                          <div className="grid grid-cols-8 gap-1">
+                            {group.icons.map((def) => (
+                              <button
+                                key={def.key}
+                                type="button"
+                                onClick={() => pickIcon(def.key)}
+                                title={def.key}
+                                className={cellClass(def.key)}
+                              >
+                                <def.Icon className="h-4 w-4" />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             ) : null}

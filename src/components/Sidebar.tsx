@@ -1,7 +1,24 @@
-import { useState } from "react";
+import { useState, type ComponentType, type ReactNode } from "react";
+import {
+  ChevronDownIcon,
+  CodeIcon,
+  FileIcon,
+  FileTextIcon,
+  HashIcon,
+  LayersIcon,
+  MessageSquareIcon,
+  PencilIcon,
+  PlusIcon,
+  SettingsIcon,
+  StarIcon,
+  TerminalIcon,
+  XIcon,
+} from "lucide-react";
 import { CategoryEditor } from "@/components/CategoryEditor";
+import { CategoryIcon } from "@/components/CategoryIcon";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { useCategories } from "@/hooks/useCategories";
+import { useSidebarCounts } from "@/hooks/useSidebarCounts";
 import { useTags } from "@/hooks/useTags";
 import { deleteCategory } from "@/lib/categories";
 import { deleteTag } from "@/lib/tags";
@@ -9,58 +26,27 @@ import { cn } from "@/lib/utils";
 import { useUiStore } from "@/stores/uiStore";
 import type { Category, ItemType, Tag } from "@/types";
 
-const TYPE_OPTIONS: { value: ItemType; label: string; icon: string }[] = [
-  { value: "command", label: "Commands", icon: "⌘" },
-  { value: "prompt", label: "Prompts", icon: "💬" },
-  { value: "snippet", label: "Snippets", icon: "{ }" },
-  { value: "note", label: "Notes", icon: "📝" },
+type IconType = ComponentType<{ className?: string }>;
+
+const TYPE_OPTIONS: { value: ItemType; label: string; Icon: IconType }[] = [
+  { value: "command", label: "Commands", Icon: TerminalIcon },
+  { value: "prompt", label: "Prompts", Icon: MessageSquareIcon },
+  { value: "snippet", label: "Snippets", Icon: CodeIcon },
+  { value: "note", label: "Notes", Icon: FileTextIcon },
 ];
 
-type SidebarRowProps = {
-  active: boolean;
-  onClick: () => void;
-  icon?: string | null;
+type NavRowProps = {
+  icon: ReactNode;
   label: string;
-  badge?: string;
-};
-
-function SidebarRow({ active, onClick, icon, label, badge }: SidebarRowProps) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-sm text-left transition-colors",
-        active
-          ? "bg-accent text-accent-foreground"
-          : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
-      )}
-    >
-      {icon ? <span className="text-base leading-none">{icon}</span> : null}
-      <span className="truncate flex-1">{label}</span>
-      {badge ? (
-        <span className="text-xs text-muted-foreground">{badge}</span>
-      ) : null}
-    </button>
-  );
-}
-
-type CategoryRowProps = {
-  category: Category;
+  count?: number;
   active: boolean;
-  editMode: boolean;
   onClick: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
+  trailing?: ReactNode;
 };
 
-function CategoryRow({
-  category,
-  active,
-  editMode,
-  onClick,
-  onEdit,
-  onDelete,
-}: CategoryRowProps) {
+// Single unified row used by every sidebar entry — views, types,
+// categories, and tags — so the whole sidebar speaks one visual language.
+function NavRow({ icon, label, count, active, onClick, trailing }: NavRowProps) {
   return (
     <div
       className={cn(
@@ -72,31 +58,65 @@ function CategoryRow({
     >
       <button
         onClick={onClick}
-        className="flex-1 min-w-0 flex items-center gap-2 px-3 py-1.5 text-left"
+        className="flex-1 min-w-0 flex items-center gap-2 px-2.5 py-1.5 text-left"
       >
-        <span className="w-5 flex-shrink-0 text-base leading-none text-center">
-          {category.icon ?? ""}
+        <span className="w-5 flex-shrink-0 flex items-center justify-center">
+          {icon}
         </span>
-        <span className="truncate flex-1">{category.name}</span>
+        <span className="truncate flex-1">{label}</span>
+        {count !== undefined && !trailing ? (
+          <span
+            className={cn(
+              "text-xs tabular-nums",
+              active
+                ? "text-accent-foreground/60"
+                : "text-muted-foreground/60",
+            )}
+          >
+            {count}
+          </span>
+        ) : null}
       </button>
-      {editMode ? (
-        <div className="flex items-center gap-0.5 pr-1">
-          <button
-            onClick={onEdit}
-            title="Edit category"
-            className="h-6 w-6 flex items-center justify-center rounded hover:bg-background/60 text-xs"
-          >
-            ✎
-          </button>
-          <button
-            onClick={onDelete}
-            title="Delete category"
-            className="h-6 w-6 flex items-center justify-center rounded hover:bg-background/60 text-xs"
-          >
-            ✕
-          </button>
-        </div>
-      ) : null}
+      {trailing}
+    </div>
+  );
+}
+
+type SectionProps = {
+  title: string;
+  collapsed: boolean;
+  onToggle: () => void;
+  actions?: ReactNode;
+  children: ReactNode;
+};
+
+function Section({
+  title,
+  collapsed,
+  onToggle,
+  actions,
+  children,
+}: SectionProps) {
+  return (
+    <div className="border-t border-border/50 pt-2 mt-2">
+      <div className="flex items-center justify-between pl-1.5 pr-1 pb-0.5">
+        <button
+          onClick={onToggle}
+          className="flex items-center gap-1 text-xs font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ChevronDownIcon
+            className={cn(
+              "h-3 w-3 transition-transform",
+              collapsed && "-rotate-90",
+            )}
+          />
+          <span>{title}</span>
+        </button>
+        {actions ? (
+          <div className="flex items-center gap-0.5">{actions}</div>
+        ) : null}
+      </div>
+      {!collapsed ? <div className="space-y-0.5">{children}</div> : null}
     </div>
   );
 }
@@ -108,20 +128,15 @@ type SidebarProps = {
 export function Sidebar({ onOpenSettings }: SidebarProps) {
   const { categories, loading } = useCategories();
   const { tags } = useTags();
+  const counts = useSidebarCounts();
   const filters = useUiStore((s) => s.filters);
   const setFilters = useUiStore((s) => s.setFilters);
   const setSelectedItemId = useUiStore((s) => s.setSelectedItemId);
   const bumpCategories = useUiStore((s) => s.bumpCategories);
   const bumpItems = useUiStore((s) => s.bumpItems);
+  const bumpTags = useUiStore((s) => s.bumpTags);
 
   const activeTagIds = filters.tagIds ?? [];
-  const toggleTag = (id: number) => {
-    const next = activeTagIds.includes(id)
-      ? activeTagIds.filter((x) => x !== id)
-      : [...activeTagIds, id];
-    setFilters({ tagIds: next.length > 0 ? next : undefined });
-    setSelectedItemId(null);
-  };
 
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<Category | null>(null);
@@ -129,7 +144,9 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
   const [deleteTagTarget, setDeleteTagTarget] = useState<Tag | null>(null);
   const [tagEditMode, setTagEditMode] = useState(false);
   const [categoryEditMode, setCategoryEditMode] = useState(false);
-  const bumpTags = useUiStore((s) => s.bumpTags);
+  const [typesCollapsed, setTypesCollapsed] = useState(false);
+  const [categoriesCollapsed, setCategoriesCollapsed] = useState(false);
+  const [tagsCollapsed, setTagsCollapsed] = useState(false);
 
   const selectCategory = (categoryId: number | null | undefined) => {
     setFilters({ categoryId, favoritesOnly: false });
@@ -141,6 +158,13 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
   };
   const toggleType = (t: ItemType) => {
     setFilters({ type: filters.type === t ? undefined : t });
+    setSelectedItemId(null);
+  };
+  const toggleTag = (id: number) => {
+    const next = activeTagIds.includes(id)
+      ? activeTagIds.filter((x) => x !== id)
+      : [...activeTagIds, id];
+    setFilters({ tagIds: next.length > 0 ? next : undefined });
     setSelectedItemId(null);
   };
 
@@ -162,8 +186,7 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
     bumpItems();
   };
 
-  const allActive =
-    filters.categoryId === undefined && !filters.favoritesOnly;
+  const allActive = filters.categoryId === undefined && !filters.favoritesOnly;
 
   return (
     <aside className="w-56 shrink-0 border-r bg-muted/20 flex flex-col">
@@ -171,193 +194,177 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
         <h1 className="text-sm font-semibold tracking-tight">Stash</h1>
       </div>
 
-      <nav className="flex-1 overflow-y-auto p-2 space-y-4">
+      <nav className="flex-1 overflow-y-auto p-2">
+        {/* Library — primary views */}
         <div className="space-y-0.5">
-          <SidebarRow
+          <NavRow
+            icon={<LayersIcon className="h-4 w-4" />}
+            label="All items"
+            count={counts.total}
             active={allActive}
             onClick={() => selectCategory(undefined)}
-            icon="📚"
-            label="All items"
           />
-          <SidebarRow
+          <NavRow
+            icon={<StarIcon className="h-4 w-4" />}
+            label="Favorites"
+            count={counts.favorites}
             active={!!filters.favoritesOnly}
             onClick={toggleFavorites}
-            icon="⭐"
-            label="Favorites"
           />
-          <SidebarRow
+          <NavRow
+            icon={<FileIcon className="h-4 w-4" />}
+            label="Uncategorized"
+            count={counts.uncategorized}
             active={filters.categoryId === null}
             onClick={() => selectCategory(null)}
-            icon="📄"
-            label="Uncategorized"
           />
         </div>
 
+        {/* Categories */}
         <div className="group/cats">
-          <div className="px-3 pb-1 flex items-center justify-between text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            <span>Categories</span>
-            <div className="flex items-center gap-0.5">
-              {categories.length > 0 ? (
-                <button
-                  onClick={() => setCategoryEditMode((v) => !v)}
-                  title={categoryEditMode ? "Done" : "Edit categories"}
-                  className={cn(
-                    "h-5 w-5 flex items-center justify-center rounded hover:bg-accent hover:text-foreground text-xs leading-none transition-opacity",
-                    categoryEditMode
-                      ? "bg-accent text-foreground opacity-100"
-                      : "opacity-0 group-hover/cats:opacity-100",
-                  )}
-                >
-                  ✎
-                </button>
-              ) : null}
-              <button
-                onClick={openNew}
-                title="New category"
-                className={cn(
-                  "h-5 w-5 flex items-center justify-center rounded hover:bg-accent hover:text-foreground text-sm leading-none transition-opacity",
-                  categoryEditMode
-                    ? "opacity-100"
-                    : "opacity-0 group-hover/cats:opacity-100",
-                )}
-              >
-                +
-              </button>
-            </div>
-          </div>
-          {loading ? (
-            <div className="px-3 py-1 text-xs text-muted-foreground">
-              Loading…
-            </div>
-          ) : categories.length === 0 ? (
-            <div className="px-3 py-1 text-xs text-muted-foreground">
-              No categories yet.
-            </div>
-          ) : (
-            <div className="space-y-0.5">
-              {categories.map((c) => (
-                <CategoryRow
-                  key={c.id}
-                  category={c}
-                  active={filters.categoryId === c.id}
-                  editMode={categoryEditMode}
-                  onClick={() => selectCategory(c.id)}
-                  onEdit={() => openEdit(c)}
-                  onDelete={() => setDeleteTarget(c)}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div>
-          <div className="px-3 pb-1 flex items-center justify-between text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            <span>Types</span>
-            {filters.type ? (
-              <button
-                onClick={() => {
-                  setFilters({ type: undefined });
-                  setSelectedItemId(null);
-                }}
-                title="Clear type filter"
-                className="text-[10px] normal-case tracking-normal hover:text-foreground"
-              >
-                clear
-              </button>
-            ) : null}
-          </div>
-          <div className="flex flex-wrap gap-1 px-2">
-            {TYPE_OPTIONS.map((opt) => {
-              const active = filters.type === opt.value;
-              return (
-                <button
-                  key={opt.value}
-                  onClick={() => toggleType(opt.value)}
-                  className={cn(
-                    "text-xs px-2 py-0.5 rounded-full transition-colors flex items-center gap-1",
-                    active
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-secondary text-secondary-foreground hover:bg-accent",
-                  )}
-                >
-                  <span className="leading-none">{opt.icon}</span>
-                  <span>{opt.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {tags.length > 0 ? (
-          <div className="group/tags">
-            <div className="px-3 pb-1 flex items-center justify-between text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              <span>Tags</span>
-              <div className="flex items-center gap-2">
-                {activeTagIds.length > 0 ? (
+          <Section
+            title="Categories"
+            collapsed={categoriesCollapsed}
+            onToggle={() => setCategoriesCollapsed((v) => !v)}
+            actions={
+              <>
+                {categories.length > 0 ? (
                   <button
-                    onClick={() => {
-                      setFilters({ tagIds: undefined });
-                      setSelectedItemId(null);
-                    }}
-                    title="Clear tag filters"
-                    className="text-[10px] normal-case tracking-normal hover:text-foreground"
+                    onClick={() => setCategoryEditMode((v) => !v)}
+                    title={categoryEditMode ? "Done" : "Edit categories"}
+                    className={cn(
+                      "h-5 w-5 flex items-center justify-center rounded hover:bg-accent hover:text-foreground transition-opacity",
+                      categoryEditMode
+                        ? "bg-accent text-foreground opacity-100"
+                        : "opacity-0 group-hover/cats:opacity-100",
+                    )}
                   >
-                    clear
+                    <PencilIcon className="h-3 w-3" />
                   </button>
                 ) : null}
                 <button
-                  onClick={() => setTagEditMode((v) => !v)}
-                  title={tagEditMode ? "Finish editing" : "Edit tags"}
+                  onClick={openNew}
+                  title="New category"
                   className={cn(
-                    "text-[10px] normal-case tracking-normal hover:text-foreground transition-opacity",
+                    "h-5 w-5 flex items-center justify-center rounded hover:bg-accent hover:text-foreground transition-opacity",
+                    categoryEditMode
+                      ? "opacity-100"
+                      : "opacity-0 group-hover/cats:opacity-100",
+                  )}
+                >
+                  <PlusIcon className="h-3.5 w-3.5" />
+                </button>
+              </>
+            }
+          >
+            {loading ? (
+              <div className="px-3 py-1 text-xs text-muted-foreground">
+                Loading…
+              </div>
+            ) : categories.length === 0 ? (
+              <div className="px-3 py-1 text-xs text-muted-foreground">
+                No categories yet.
+              </div>
+            ) : (
+              categories.map((c) => (
+                <NavRow
+                  key={c.id}
+                  icon={<CategoryIcon icon={c.icon} className="h-4 w-4" />}
+                  label={c.name}
+                  count={counts.byCategory[c.id] ?? 0}
+                  active={filters.categoryId === c.id}
+                  onClick={() => selectCategory(c.id)}
+                  trailing={
+                    categoryEditMode ? (
+                      <div className="flex items-center gap-0.5 pr-1">
+                        <button
+                          onClick={() => openEdit(c)}
+                          title="Edit category"
+                          className="h-6 w-6 flex items-center justify-center rounded hover:bg-background/60"
+                        >
+                          <PencilIcon className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => setDeleteTarget(c)}
+                          title="Delete category"
+                          className="h-6 w-6 flex items-center justify-center rounded hover:bg-background/60"
+                        >
+                          <XIcon className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ) : undefined
+                  }
+                />
+              ))
+            )}
+          </Section>
+        </div>
+
+        {/* Types */}
+        <Section
+          title="Types"
+          collapsed={typesCollapsed}
+          onToggle={() => setTypesCollapsed((v) => !v)}
+        >
+          {TYPE_OPTIONS.map((opt) => (
+            <NavRow
+              key={opt.value}
+              icon={<opt.Icon className="h-4 w-4" />}
+              label={opt.label}
+              count={counts.byType[opt.value] ?? 0}
+              active={filters.type === opt.value}
+              onClick={() => toggleType(opt.value)}
+            />
+          ))}
+        </Section>
+
+        {/* Tags */}
+        {tags.length > 0 ? (
+          <div className="group/tags">
+            <Section
+              title="Tags"
+              collapsed={tagsCollapsed}
+              onToggle={() => setTagsCollapsed((v) => !v)}
+              actions={
+                <button
+                  onClick={() => setTagEditMode((v) => !v)}
+                  title={tagEditMode ? "Done" : "Edit tags"}
+                  className={cn(
+                    "h-5 w-5 flex items-center justify-center rounded hover:bg-accent hover:text-foreground transition-opacity",
                     tagEditMode
-                      ? "text-foreground opacity-100"
+                      ? "bg-accent text-foreground opacity-100"
                       : "opacity-0 group-hover/tags:opacity-100",
                   )}
                 >
-                  {tagEditMode ? "done" : "edit"}
+                  <PencilIcon className="h-3 w-3" />
                 </button>
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-1 px-2">
-              {tags.map((t) => {
-                const active = activeTagIds.includes(t.id);
-                return (
-                  <span
-                    key={t.id}
-                    className={cn(
-                      "group/tag inline-flex items-center text-xs rounded-full transition-colors",
-                      active
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary text-secondary-foreground hover:bg-accent",
-                    )}
-                  >
-                    <button
-                      onClick={() => toggleTag(t.id)}
-                      className={cn(
-                        "py-0.5 rounded-l-full",
-                        tagEditMode ? "pl-2 pr-1" : "px-2 rounded-r-full",
-                      )}
-                    >
-                      #{t.name}
-                    </button>
-                    {tagEditMode ? (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeleteTagTarget(t);
-                        }}
-                        aria-label={`Delete tag ${t.name}`}
-                        title="Delete tag"
-                        className="pr-1.5 pl-0.5 py-0.5 rounded-r-full opacity-70 hover:opacity-100 transition-opacity"
-                      >
-                        ×
-                      </button>
-                    ) : null}
-                  </span>
-                );
-              })}
-            </div>
+              }
+            >
+              {tags.map((t) => (
+                <NavRow
+                  key={t.id}
+                  icon={<HashIcon className="h-4 w-4" />}
+                  label={t.name}
+                  count={counts.byTag[t.id] ?? 0}
+                  active={activeTagIds.includes(t.id)}
+                  onClick={() => toggleTag(t.id)}
+                  trailing={
+                    tagEditMode ? (
+                      <div className="flex items-center pr-1">
+                        <button
+                          onClick={() => setDeleteTagTarget(t)}
+                          title="Delete tag"
+                          aria-label={`Delete tag ${t.name}`}
+                          className="h-6 w-6 flex items-center justify-center rounded hover:bg-background/60"
+                        >
+                          <XIcon className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ) : undefined
+                  }
+                />
+              ))}
+            </Section>
           </div>
         ) : null}
       </nav>
@@ -365,9 +372,11 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
       <div className="border-t p-2">
         <button
           onClick={onOpenSettings}
-          className="w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-sm text-muted-foreground hover:bg-accent/60 hover:text-foreground transition-colors"
+          className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-sm text-muted-foreground hover:bg-accent/60 hover:text-foreground transition-colors"
         >
-          <span className="text-base leading-none">⚙</span>
+          <span className="w-5 flex-shrink-0 flex items-center justify-center">
+            <SettingsIcon className="h-4 w-4" />
+          </span>
           <span>Settings</span>
         </button>
       </div>
@@ -394,9 +403,7 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
           if (!o) setDeleteTagTarget(null);
         }}
         title={
-          deleteTagTarget
-            ? `Delete tag “#${deleteTagTarget.name}”?`
-            : "Delete?"
+          deleteTagTarget ? `Delete tag “#${deleteTagTarget.name}”?` : "Delete?"
         }
         description="The tag will be removed from all items. This cannot be undone."
         onConfirm={async () => {

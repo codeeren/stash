@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { CategoryIcon } from "@/components/CategoryIcon";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { ExecuteDialog } from "@/components/ExecuteDialog";
 import { ItemEditor } from "@/components/ItemEditor";
@@ -163,8 +164,11 @@ export function ItemDetail() {
           {item.category ? (
             <>
               <span>·</span>
-              <span>
-                {item.category.icon ? `${item.category.icon} ` : ""}
+              <span className="flex items-center gap-1">
+                <CategoryIcon
+                  icon={item.category.icon}
+                  className="h-3.5 w-3.5"
+                />
                 {item.category.name}
               </span>
             </>
