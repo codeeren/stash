@@ -47,6 +47,7 @@ function SidebarRow({ active, onClick, icon, label, badge }: SidebarRowProps) {
 type CategoryRowProps = {
   category: Category;
   active: boolean;
+  editMode: boolean;
   onClick: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -55,6 +56,7 @@ type CategoryRowProps = {
 function CategoryRow({
   category,
   active,
+  editMode,
   onClick,
   onEdit,
   onDelete,
@@ -62,7 +64,7 @@ function CategoryRow({
   return (
     <div
       className={cn(
-        "group relative flex items-center rounded-md text-sm transition-colors",
+        "relative flex items-center rounded-md text-sm transition-colors",
         active
           ? "bg-accent text-accent-foreground"
           : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
@@ -72,27 +74,29 @@ function CategoryRow({
         onClick={onClick}
         className="flex-1 min-w-0 flex items-center gap-2 px-3 py-1.5 text-left"
       >
-        {category.icon ? (
-          <span className="text-base leading-none">{category.icon}</span>
-        ) : null}
+        <span className="w-5 flex-shrink-0 text-base leading-none text-center">
+          {category.icon ?? ""}
+        </span>
         <span className="truncate flex-1">{category.name}</span>
       </button>
-      <div className="hidden group-hover:flex items-center gap-0.5 pr-1">
-        <button
-          onClick={onEdit}
-          title="Edit"
-          className="h-6 w-6 flex items-center justify-center rounded hover:bg-background/60 text-xs"
-        >
-          ✎
-        </button>
-        <button
-          onClick={onDelete}
-          title="Delete"
-          className="h-6 w-6 flex items-center justify-center rounded hover:bg-background/60 text-xs"
-        >
-          ✕
-        </button>
-      </div>
+      {editMode ? (
+        <div className="flex items-center gap-0.5 pr-1">
+          <button
+            onClick={onEdit}
+            title="Edit category"
+            className="h-6 w-6 flex items-center justify-center rounded hover:bg-background/60 text-xs"
+          >
+            ✎
+          </button>
+          <button
+            onClick={onDelete}
+            title="Delete category"
+            className="h-6 w-6 flex items-center justify-center rounded hover:bg-background/60 text-xs"
+          >
+            ✕
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -124,6 +128,7 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
   const [deleteTarget, setDeleteTarget] = useState<Category | null>(null);
   const [deleteTagTarget, setDeleteTagTarget] = useState<Tag | null>(null);
   const [tagEditMode, setTagEditMode] = useState(false);
+  const [categoryEditMode, setCategoryEditMode] = useState(false);
   const bumpTags = useUiStore((s) => s.bumpTags);
 
   const selectCategory = (categoryId: number | null | undefined) => {
@@ -188,16 +193,37 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
           />
         </div>
 
-        <div>
+        <div className="group/cats">
           <div className="px-3 pb-1 flex items-center justify-between text-xs font-medium uppercase tracking-wider text-muted-foreground">
             <span>Categories</span>
-            <button
-              onClick={openNew}
-              title="New category"
-              className="h-5 w-5 flex items-center justify-center rounded hover:bg-accent hover:text-foreground text-sm leading-none"
-            >
-              +
-            </button>
+            <div className="flex items-center gap-0.5">
+              {categories.length > 0 ? (
+                <button
+                  onClick={() => setCategoryEditMode((v) => !v)}
+                  title={categoryEditMode ? "Done" : "Edit categories"}
+                  className={cn(
+                    "h-5 w-5 flex items-center justify-center rounded hover:bg-accent hover:text-foreground text-xs leading-none transition-opacity",
+                    categoryEditMode
+                      ? "bg-accent text-foreground opacity-100"
+                      : "opacity-0 group-hover/cats:opacity-100",
+                  )}
+                >
+                  ✎
+                </button>
+              ) : null}
+              <button
+                onClick={openNew}
+                title="New category"
+                className={cn(
+                  "h-5 w-5 flex items-center justify-center rounded hover:bg-accent hover:text-foreground text-sm leading-none transition-opacity",
+                  categoryEditMode
+                    ? "opacity-100"
+                    : "opacity-0 group-hover/cats:opacity-100",
+                )}
+              >
+                +
+              </button>
+            </div>
           </div>
           {loading ? (
             <div className="px-3 py-1 text-xs text-muted-foreground">
@@ -214,6 +240,7 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
                   key={c.id}
                   category={c}
                   active={filters.categoryId === c.id}
+                  editMode={categoryEditMode}
                   onClick={() => selectCategory(c.id)}
                   onEdit={() => openEdit(c)}
                   onDelete={() => setDeleteTarget(c)}
@@ -262,7 +289,7 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
         </div>
 
         {tags.length > 0 ? (
-          <div>
+          <div className="group/tags">
             <div className="px-3 pb-1 flex items-center justify-between text-xs font-medium uppercase tracking-wider text-muted-foreground">
               <span>Tags</span>
               <div className="flex items-center gap-2">
@@ -282,8 +309,10 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
                   onClick={() => setTagEditMode((v) => !v)}
                   title={tagEditMode ? "Finish editing" : "Edit tags"}
                   className={cn(
-                    "text-[10px] normal-case tracking-normal hover:text-foreground",
-                    tagEditMode && "text-foreground",
+                    "text-[10px] normal-case tracking-normal hover:text-foreground transition-opacity",
+                    tagEditMode
+                      ? "text-foreground opacity-100"
+                      : "opacity-0 group-hover/tags:opacity-100",
                   )}
                 >
                   {tagEditMode ? "done" : "edit"}
