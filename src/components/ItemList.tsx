@@ -166,7 +166,7 @@ export function ItemList() {
       <div ref={listRef} className="flex-1 overflow-y-auto">
         {error ? (
           <div className="p-4 text-sm text-destructive">{error}</div>
-        ) : loading ? (
+        ) : loading && items.length === 0 ? (
           <div className="p-4 text-sm text-muted-foreground">Loading…</div>
         ) : items.length === 0 ? (
           <div className="p-6 text-center space-y-1">

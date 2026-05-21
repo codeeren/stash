@@ -101,8 +101,15 @@ fn apply_menu(
 
 fn show_window(app: &AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
-        let _ = window.show();
-        let _ = window.unminimize();
+        // Only call show()/unminimize() when actually needed. Calling show()
+        // on an already-visible window causes a visible flash on macOS (the
+        // window briefly disappears and reappears).
+        if !window.is_visible().unwrap_or(true) {
+            let _ = window.show();
+        }
+        if window.is_minimized().unwrap_or(false) {
+            let _ = window.unminimize();
+        }
         let _ = window.set_focus();
     }
 }

@@ -127,13 +127,17 @@ export function VariableFillDialog({
 
   const isCommand = item.type === "command";
 
+  // Only reset when the dialog opens or when the item identity changes —
+  // not when bumpItems() returns a fresh-but-equivalent variables array
+  // (would wipe the user's input mid-flow and flash the UI).
   useEffect(() => {
     if (open) {
       setValues(initialValues(item.variables));
       setCopied(false);
       setError(null);
     }
-  }, [open, item.id, item.variables]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, item.id]);
 
   const preview = useMemo(
     () => resolveVariables(item.content, values),

@@ -103,7 +103,7 @@ export function ItemDetail() {
     );
   }
 
-  if (loading) {
+  if (loading && !item) {
     return (
       <section className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
         Loading…
