@@ -33,6 +33,12 @@ type UiStore = {
   pendingTrayItemId: number | null;
   requestTrayItem: (id: number) => void;
   clearPendingTrayItem: () => void;
+
+  // Id of the item currently being dragged from the list, or null. Tracked
+  // in the store because WebKit does not expose custom dataTransfer types
+  // during `dragover`, so drop targets cannot detect the drag otherwise.
+  draggingItemId: number | null;
+  setDraggingItemId: (id: number | null) => void;
 };
 
 const emptyFilters: SearchFilters = {};
@@ -74,4 +80,7 @@ export const useUiStore = create<UiStore>((set) => ({
   requestTrayItem: (id) =>
     set({ selectedItemId: id, pendingTrayItemId: id }),
   clearPendingTrayItem: () => set({ pendingTrayItemId: null }),
+
+  draggingItemId: null,
+  setDraggingItemId: (id) => set({ draggingItemId: id }),
 }));

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { StarIcon } from "lucide-react";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { ExecuteDialog } from "@/components/ExecuteDialog";
@@ -219,6 +220,7 @@ export function ItemDetail() {
               size="sm"
               variant="outline"
               onClick={() => setDeleteOpen(true)}
+              className="text-muted-foreground/40 hover:text-destructive"
             >
               Delete
             </Button>
@@ -227,8 +229,16 @@ export function ItemDetail() {
               variant="outline"
               onClick={onToggleFavorite}
               title={item.isFavorite ? "Unfavorite" : "Favorite"}
+              aria-label={item.isFavorite ? "Unfavorite" : "Favorite"}
             >
-              {item.isFavorite ? "★" : "☆"}
+              <StarIcon
+                className={cn(
+                  "h-4 w-4",
+                  item.isFavorite
+                    ? "fill-amber-400 text-amber-400"
+                    : "text-muted-foreground",
+                )}
+              />
             </Button>
             <Button
               size="sm"

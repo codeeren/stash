@@ -1,4 +1,9 @@
-import { useState, type ComponentType, type ReactNode } from "react";
+import {
+  useState,
+  type ComponentType,
+  type DragEvent,
+  type ReactNode,
+} from "react";
 import {
   ChevronDownIcon,
   CodeIcon,
@@ -7,10 +12,12 @@ import {
   HashIcon,
   LayersIcon,
   MessageSquareIcon,
+  MoonIcon,
   PencilIcon,
   PlusIcon,
   SettingsIcon,
   StarIcon,
+  SunIcon,
   TerminalIcon,
   XIcon,
 } from "lucide-react";
@@ -21,8 +28,11 @@ import { useCategories } from "@/hooks/useCategories";
 import { useSidebarCounts } from "@/hooks/useSidebarCounts";
 import { useTags } from "@/hooks/useTags";
 import { deleteCategory } from "@/lib/categories";
+import { getDraggedItemId } from "@/lib/dnd";
+import { updateItem } from "@/lib/items";
 import { deleteTag } from "@/lib/tags";
 import { cn } from "@/lib/utils";
+import { useSettingsStore } from "@/stores/settingsStore";
 import { useUiStore } from "@/stores/uiStore";
 import type { Category, ItemType, Tag } from "@/types";
 
@@ -42,18 +52,54 @@ type NavRowProps = {
   active: boolean;
   onClick: () => void;
   trailing?: ReactNode;
+  // When set, the row accepts items dragged from the list. Called with the
+  // dropped item's id so the caller can re-assign its category.
+  onDropItem?: (itemId: number) => void;
 };
 
 // Single unified row used by every sidebar entry — views, types,
 // categories, and tags — so the whole sidebar speaks one visual language.
-function NavRow({ icon, label, count, active, onClick, trailing }: NavRowProps) {
+function NavRow({
+  icon,
+  label,
+  count,
+  active,
+  onClick,
+  trailing,
+  onDropItem,
+}: NavRowProps) {
+  const [dropActive, setDropActive] = useState(false);
+  const draggingItemId = useUiStore((s) => s.draggingItemId);
+
+  // WebKit hides custom dataTransfer types during `dragover`, so we rely on
+  // the store flag to know an item drag is in progress.
+  const dndHandlers =
+    onDropItem && draggingItemId !== null
+      ? {
+          onDragOver: (e: DragEvent) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            setDropActive(true);
+          },
+          onDragLeave: () => setDropActive(false),
+          onDrop: (e: DragEvent) => {
+            e.preventDefault();
+            setDropActive(false);
+            const id = getDraggedItemId(e.dataTransfer) ?? draggingItemId;
+            onDropItem(id);
+          },
+        }
+      : {};
+
   return (
     <div
+      {...dndHandlers}
       className={cn(
         "relative flex items-center rounded-md text-sm transition-colors",
         active
           ? "bg-accent text-accent-foreground"
           : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+        dropActive && "ring-2 ring-inset ring-primary bg-accent/70",
       )}
     >
       <button
@@ -136,6 +182,15 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
   const bumpItems = useUiStore((s) => s.bumpItems);
   const bumpTags = useUiStore((s) => s.bumpTags);
 
+  const theme = useSettingsStore((s) => s.values.theme);
+  const setSetting = useSettingsStore((s) => s.set);
+  const prefersDark =
+    typeof window !== "undefined" &&
+    window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const isDark = theme === "dark" || (theme === "system" && prefersDark);
+  const toggleTheme = () =>
+    void setSetting("theme", isDark ? "light" : "dark");
+
   const activeTagIds = filters.tagIds ?? [];
 
   const [editorOpen, setEditorOpen] = useState(false);
@@ -151,6 +206,20 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
   const selectCategory = (categoryId: number | null | undefined) => {
     setFilters({ categoryId, favoritesOnly: false });
     setSelectedItemId(null);
+  };
+
+  // Drag-and-drop: an item dropped on a category row is re-assigned to it
+  // (or to no category when dropped on Uncategorized).
+  const moveItemToCategory = async (
+    itemId: number,
+    categoryId: number | null,
+  ) => {
+    try {
+      await updateItem(itemId, { categoryId });
+      bumpItems();
+    } catch (e) {
+      console.error(e);
+    }
   };
   const toggleFavorites = () => {
     setFilters({ favoritesOnly: !filters.favoritesOnly, categoryId: undefined });
@@ -217,6 +286,7 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
             count={counts.uncategorized}
             active={filters.categoryId === null}
             onClick={() => selectCategory(null)}
+            onDropItem={(itemId) => void moveItemToCategory(itemId, null)}
           />
         </div>
 
@@ -274,6 +344,9 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
                   count={counts.byCategory[c.id] ?? 0}
                   active={filters.categoryId === c.id}
                   onClick={() => selectCategory(c.id)}
+                  onDropItem={(itemId) =>
+                    void moveItemToCategory(itemId, c.id)
+                  }
                   trailing={
                     categoryEditMode ? (
                       <div className="flex items-center gap-0.5 pr-1">
@@ -369,15 +442,25 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
         ) : null}
       </nav>
 
-      <div className="border-t p-2">
+      <div className="h-8 border-t px-2 flex items-center justify-between">
         <button
           onClick={onOpenSettings}
-          className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-sm text-muted-foreground hover:bg-accent/60 hover:text-foreground transition-colors"
+          className="flex items-center gap-2 h-6 px-1.5 rounded-md text-sm text-muted-foreground hover:bg-accent/60 hover:text-foreground transition-colors"
         >
-          <span className="w-5 flex-shrink-0 flex items-center justify-center">
-            <SettingsIcon className="h-4 w-4" />
-          </span>
+          <SettingsIcon className="h-4 w-4" />
           <span>Settings</span>
+        </button>
+        <button
+          onClick={toggleTheme}
+          title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+          aria-label="Toggle theme"
+          className="h-6 w-6 flex items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+        >
+          {isDark ? (
+            <SunIcon className="h-3.5 w-3.5" />
+          ) : (
+            <MoonIcon className="h-3.5 w-3.5" />
+          )}
         </button>
       </div>
 

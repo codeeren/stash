@@ -1,4 +1,10 @@
 import { useEffect, useRef, useState } from "react";
+import {
+  CodeIcon,
+  FileTextIcon,
+  MessageSquareIcon,
+  TerminalIcon,
+} from "lucide-react";
 import { ItemEditor } from "@/components/ItemEditor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useItems } from "@/hooks/useItems";
+import { setDraggedItem } from "@/lib/dnd";
 import type { SortValue } from "@/lib/settings";
 import { cn } from "@/lib/utils";
 import { useSettingsStore } from "@/stores/settingsStore";
@@ -23,18 +30,21 @@ const SORT_OPTIONS: { value: SortValue; label: string }[] = [
   { value: "alpha", label: "A → Z" },
 ];
 
-const TYPE_LABEL: Record<ItemType, string> = {
-  command: "CMD",
-  prompt: "PMT",
-  snippet: "SNP",
-  note: "NTE",
+const TYPE_ICON: Record<
+  ItemType,
+  React.ComponentType<{ className?: string }>
+> = {
+  command: TerminalIcon,
+  prompt: MessageSquareIcon,
+  snippet: CodeIcon,
+  note: FileTextIcon,
 };
 
-const TYPE_COLOR: Record<ItemType, string> = {
-  command: "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
-  prompt: "bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300",
-  snippet: "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300",
-  note: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
+const TYPE_NAME: Record<ItemType, string> = {
+  command: "Command",
+  prompt: "Prompt",
+  snippet: "Snippet",
+  note: "Note",
 };
 
 type ItemRowProps = {
@@ -44,33 +54,45 @@ type ItemRowProps = {
 };
 
 function ItemRow({ item, active, onClick }: ItemRowProps) {
+  const TypeIcon = TYPE_ICON[item.type];
+  const setDraggingItemId = useUiStore((s) => s.setDraggingItemId);
   return (
     <button
       onClick={onClick}
+      draggable
+      onDragStart={(e) => {
+        setDraggedItem(e.dataTransfer, item.id);
+        setDraggingItemId(item.id);
+      }}
+      onDragEnd={() => setDraggingItemId(null)}
       className={cn(
-        "w-full text-left px-3 py-2 border-b transition-colors",
+        "w-full text-left px-3 py-2 border-b border-border/40 transition-colors",
         active ? "bg-accent" : "hover:bg-accent/50",
       )}
     >
-      <div className="flex items-center gap-2 mb-0.5">
-        <span
-          className={cn(
-            "text-[10px] font-semibold px-1.5 py-0.5 rounded tracking-wide",
-            TYPE_COLOR[item.type],
-          )}
-        >
-          {TYPE_LABEL[item.type]}
-        </span>
-        {item.isFavorite ? <span className="text-xs">⭐</span> : null}
-        <span className="text-sm font-medium truncate flex-1">
-          {item.title}
-        </span>
-      </div>
-      {item.description ? (
-        <div className="text-xs text-muted-foreground line-clamp-1">
-          {item.description}
+      <div className="flex items-start gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-medium truncate">{item.title}</div>
+          {item.description ? (
+            <div className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
+              {item.description}
+            </div>
+          ) : null}
         </div>
-      ) : null}
+        <div className="flex items-center gap-1.5 flex-shrink-0 mt-1">
+          {item.isFavorite ? (
+            <span
+              className="h-1.5 w-1.5 rounded-full bg-amber-400/80"
+              aria-label="Favorite"
+              title="Favorite"
+            />
+          ) : null}
+          <TypeIcon
+            className="h-3.5 w-3.5 text-muted-foreground/60"
+            aria-label={TYPE_NAME[item.type]}
+          />
+        </div>
+      </div>
     </button>
   );
 }
@@ -192,7 +214,7 @@ export function ItemList() {
           ))
         )}
       </div>
-      <div className="px-3 py-1.5 border-t text-xs text-muted-foreground flex items-center justify-between gap-2">
+      <div className="h-8 px-3 border-t text-xs text-muted-foreground flex items-center justify-between gap-2">
         <span>
           {loading ? "…" : `${items.length} item${items.length === 1 ? "" : "s"}`}
         </span>
@@ -202,7 +224,7 @@ export function ItemList() {
           disabled={sortDisabled}
         >
           <SelectTrigger
-            className="h-6 text-xs border-0 bg-transparent shadow-none px-1 gap-1 hover:bg-accent hover:text-foreground focus:ring-0 focus:ring-offset-0 w-auto"
+            className="h-6 text-xs border-0 bg-transparent dark:bg-transparent shadow-none px-1.5 py-0 gap-1 hover:bg-accent dark:hover:bg-accent hover:text-foreground focus:ring-0 focus-visible:ring-0 w-auto"
             title={sortDisabled ? "Search uses relevance ranking" : "Sort items"}
           >
             <SelectValue />
