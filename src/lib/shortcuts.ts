@@ -95,6 +95,39 @@ export function hasModifier(s: Shortcut): boolean {
   return s.mod || s.ctrl || s.alt;
 }
 
+// Map a canonical key token to the name tauri-plugin-global-shortcut expects.
+function acceleratorKey(key: string): string {
+  switch (key) {
+    case "Esc":
+      return "Escape";
+    case "Up":
+      return "ArrowUp";
+    case "Down":
+      return "ArrowDown";
+    case "Left":
+      return "ArrowLeft";
+    case "Right":
+      return "ArrowRight";
+    default:
+      return key;
+  }
+}
+
+// Convert a canonical "Mod+Shift+Space" string into a global-shortcut
+// accelerator ("CommandOrControl+Shift+Space"). "Mod" is not a valid
+// accelerator token, so it must be expanded before registering.
+export function toAccelerator(str: string): string {
+  const s = parse(str);
+  if (!s) return "";
+  const parts: string[] = [];
+  if (s.mod) parts.push("CommandOrControl");
+  if (s.ctrl) parts.push("Control");
+  if (s.alt) parts.push("Alt");
+  if (s.shift) parts.push("Shift");
+  parts.push(acceleratorKey(s.key));
+  return parts.join("+");
+}
+
 export function format(str: string): string {
   const s = parse(str);
   if (!s) return "";

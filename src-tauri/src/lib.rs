@@ -1,6 +1,7 @@
 mod menu;
 mod migrations;
 mod shell;
+mod shortcut;
 mod tray;
 
 pub const DB_URL: &str = "sqlite:stash.db";
@@ -8,6 +9,11 @@ pub const DB_URL: &str = "sqlite:stash.db";
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(
+            tauri_plugin_global_shortcut::Builder::new()
+                .with_handler(shortcut::handle_shortcut)
+                .build(),
+        )
         .plugin(tauri_plugin_opener::init())
         .plugin(
             tauri_plugin_sql::Builder::default()
@@ -16,6 +22,7 @@ pub fn run() {
         )
         .invoke_handler(tauri::generate_handler![
             shell::execute_command,
+            shortcut::set_global_shortcut,
             tray::set_tray_visible,
             tray::set_tray_items,
             tray::set_tray_title,

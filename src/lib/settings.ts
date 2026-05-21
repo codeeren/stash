@@ -2,6 +2,8 @@ import { getDb } from "@/lib/db";
 
 export type SettingKey =
   | "shortcut.commandPalette"
+  | "shortcut.global.enabled"
+  | "shortcut.global.key"
   | "theme"
   | "tray.enabled"
   | "tray.sort"
@@ -13,6 +15,11 @@ export type SortValue = "recent" | "mostUsed" | "newest" | "alpha";
 
 export const DEFAULT_SETTINGS: Record<SettingKey, string> = {
   "shortcut.commandPalette": "Mod+K",
+  // On by default: the standard macOS hotkey API needs no Accessibility
+  // permission, so there is nothing to opt into for safety. Users can
+  // still turn it off in Settings.
+  "shortcut.global.enabled": "true",
+  "shortcut.global.key": "Mod+Shift+Space",
   theme: "system",
   "tray.enabled": "true",
   "tray.sort": "newest",

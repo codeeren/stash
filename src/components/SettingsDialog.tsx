@@ -172,7 +172,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
         </DialogHeader>
@@ -198,6 +198,47 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 onChange={(v) => update("shortcut.commandPalette", v)}
               />
             </div>
+            <label className="flex items-start gap-2 pt-1 cursor-pointer">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={draft["shortcut.global.enabled"] === "true"}
+                onChange={(e) => {
+                  const v = e.currentTarget.checked ? "true" : "false";
+                  update("shortcut.global.enabled", v);
+                  void setValue("shortcut.global.enabled", v);
+                }}
+              />
+              <div className="space-y-0.5">
+                <div className="text-sm">Global quick-launch</div>
+                <div className="text-xs text-muted-foreground">
+                  A system-wide hotkey that opens a search bar to run an
+                  item without opening Stash. Turn it off here if you'd
+                  rather not have one.
+                </div>
+              </div>
+            </label>
+            {draft["shortcut.global.enabled"] === "true" ? (
+              <div className="space-y-2 pl-6">
+                <div className="flex items-center justify-between">
+                  <Label>Quick-launch shortcut</Label>
+                  <button
+                    type="button"
+                    onClick={() => reset("shortcut.global.key")}
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    Reset
+                  </button>
+                </div>
+                <ShortcutInput
+                  value={draft["shortcut.global.key"]}
+                  onChange={(v) => {
+                    update("shortcut.global.key", v);
+                    void setValue("shortcut.global.key", v);
+                  }}
+                />
+              </div>
+            ) : null}
           </div>
 
           <div className="space-y-3">

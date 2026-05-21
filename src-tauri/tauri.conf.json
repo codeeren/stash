@@ -10,13 +10,31 @@
     "frontendDist": "../dist"
   },
   "app": {
+    "macOSPrivateApi": true,
     "windows": [
       {
+        "label": "main",
         "title": "Stash",
         "width": 1100,
         "height": 700,
         "minWidth": 900,
         "minHeight": 500,
+        "dragDropEnabled": false
+      },
+      {
+        "label": "quicklaunch",
+        "url": "index.html?view=quicklaunch",
+        "title": "Stash Quick Launch",
+        "width": 680,
+        "height": 460,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "visible": false,
+        "center": true,
+        "resizable": false,
+        "skipTaskbar": true,
+        "shadow": false,
         "dragDropEnabled": false
       }
     ],

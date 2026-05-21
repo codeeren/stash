@@ -14,7 +14,7 @@ import {
   recordItemUse,
 } from "@/lib/items";
 import { seedSampleData } from "@/lib/seed";
-import { matches } from "@/lib/shortcuts";
+import { matches, toAccelerator } from "@/lib/shortcuts";
 import type { SortValue, ThemeValue } from "@/lib/settings";
 import { applyTheme } from "@/lib/theme";
 import { useSettingsStore } from "@/stores/settingsStore";
@@ -85,6 +85,12 @@ function App() {
     (s) => s.values["tray.enabled"] !== "false",
   );
   const traySort = useSettingsStore((s) => s.values["tray.sort"]) as SortValue;
+  const globalShortcutEnabled = useSettingsStore(
+    (s) => s.values["shortcut.global.enabled"] === "true",
+  );
+  const globalShortcutKey = useSettingsStore(
+    (s) => s.values["shortcut.global.key"],
+  );
 
   const requestFocusSearch = useUiStore((s) => s.requestFocusSearch);
   const requestNewItem = useUiStore((s) => s.requestNewItem);
@@ -103,6 +109,18 @@ function App() {
   useEffect(() => {
     void invoke("set_tray_visible", { visible: trayEnabled });
   }, [trayEnabled]);
+
+  // Global shortcut: registration happens in Rust (robust against webview
+  // permission/event quirks). We just push the current setting down.
+  useEffect(() => {
+    const accel = globalShortcutEnabled
+      ? toAccelerator(globalShortcutKey)
+      : "";
+    void invoke("set_global_shortcut", {
+      enabled: globalShortcutEnabled && accel !== "",
+      accelerator: accel,
+    });
+  }, [globalShortcutEnabled, globalShortcutKey]);
 
   useEffect(() => {
     applyTheme(theme);
