@@ -158,7 +158,20 @@ export function VariableFillDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent
+        className="sm:max-w-2xl max-h-[90vh] overflow-y-auto"
+        onKeyDown={(e) => {
+          if (e.key !== "Enter") return;
+          const inTextarea =
+            (e.target as HTMLElement).tagName === "TEXTAREA";
+          const mod = e.metaKey || e.ctrlKey;
+          // In a textarea Enter adds a newline; Cmd/Ctrl+Enter still submits.
+          if (inTextarea && !mod) return;
+          e.preventDefault();
+          if (isCommand) setExecuteOpen(true);
+          else void onCopy();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Fill variables</DialogTitle>
         </DialogHeader>

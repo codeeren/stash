@@ -59,7 +59,15 @@ export function ExecuteDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent
+        className="sm:max-w-2xl max-h-[90vh] overflow-y-auto"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey && !running) {
+            e.preventDefault();
+            void onRun();
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Run command</DialogTitle>
         </DialogHeader>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import {
   Dialog,
@@ -138,6 +138,27 @@ export function ItemEditor({
     () => extractVariableNames(form.content),
     [form.content],
   );
+
+  const contentRef = useRef<HTMLTextAreaElement>(null);
+
+  // Insert a {{}} placeholder at the cursor. If text is selected, wrap it
+  // (e.g. "path" → "{{path}}"); otherwise drop an empty {{}} and put the
+  // caret between the braces ready for typing.
+  const insertVariable = () => {
+    const ta = contentRef.current;
+    const text = form.content;
+    const start = ta?.selectionStart ?? text.length;
+    const end = ta?.selectionEnd ?? text.length;
+    const selected = text.slice(start, end);
+    const inserted = selected ? `{{${selected}}}` : "{{}}";
+    const next = text.slice(0, start) + inserted + text.slice(end);
+    const caret = selected ? start + inserted.length : start + 2;
+    update("content", next);
+    requestAnimationFrame(() => {
+      ta?.focus();
+      ta?.setSelectionRange(caret, caret);
+    });
+  };
 
   useEffect(() => {
     setVarConfigs((prev) => {
@@ -337,11 +358,21 @@ export function ItemEditor({
             <Label htmlFor="content">Content</Label>
             <Textarea
               id="content"
+              ref={contentRef}
               value={form.content}
               onChange={(e) => update("content", e.currentTarget.value)}
               placeholder="The command, prompt, or snippet. Use {{name}} for variables."
               className="font-mono text-xs min-h-[10rem]"
             />
+            <button
+              type="button"
+              onClick={insertVariable}
+              title="Insert a {{variable}} placeholder at the cursor"
+              className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 w-fit"
+            >
+              <span className="font-mono">{"{ }"}</span>
+              <span>Insert variable</span>
+            </button>
             {detectedVariables.length > 0 ? (
               <div className="text-xs text-muted-foreground">
                 Detected variables:{" "}
