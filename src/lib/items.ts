@@ -21,14 +21,14 @@ import type {
 function orderByClause(sort: SortValue): string {
   switch (sort) {
     case "mostUsed":
-      return "is_favorite DESC, use_count DESC, COALESCE(last_used_at, created_at) DESC";
+      return "use_count DESC, COALESCE(last_used_at, created_at) DESC";
     case "newest":
-      return "is_favorite DESC, created_at DESC";
+      return "created_at DESC";
     case "alpha":
-      return "is_favorite DESC, LOWER(title) ASC";
+      return "LOWER(title) ASC";
     case "recent":
     default:
-      return "is_favorite DESC, COALESCE(last_used_at, created_at) DESC";
+      return "COALESCE(last_used_at, created_at) DESC";
   }
 }
 
