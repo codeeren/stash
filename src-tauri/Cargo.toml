@@ -1,6 +1,6 @@
 [package]
 name = "stash"
-version = "0.1.0"
+version = "0.1.1"
 description = "Native macOS hub for commands, prompts, and snippets"
 authors = ["Eren Yilmaz"]
 edition = "2021"
