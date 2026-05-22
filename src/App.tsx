@@ -13,13 +13,17 @@ import {
   listItems,
   recordItemUse,
 } from "@/lib/items";
-import { seedSampleData } from "@/lib/seed";
+import { exportBackup } from "@/lib/backup";
+import { STARTER_PACKS, seedPacks } from "@/lib/seed";
 import { matches, toAccelerator } from "@/lib/shortcuts";
 import type { SortValue, ThemeValue } from "@/lib/settings";
 import { applyTheme } from "@/lib/theme";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useUiStore } from "@/stores/uiStore";
 
+// Shown only on a genuinely empty database (fresh install). Lets a new
+// user load curated starter packs, or dismiss to start empty. An existing
+// user's stash is untouched — this never appears once items exist.
 function EmptyDatabaseOverlay() {
   const { items, loading } = useItems();
   const query = useUiStore((s) => s.searchQuery);
@@ -28,7 +32,9 @@ function EmptyDatabaseOverlay() {
   const bumpCategories = useUiStore((s) => s.bumpCategories);
   const bumpTags = useUiStore((s) => s.bumpTags);
 
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [seeding, setSeeding] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const hasFilters =
@@ -38,13 +44,30 @@ function EmptyDatabaseOverlay() {
     Boolean(filters.favoritesOnly) ||
     (filters.tagIds && filters.tagIds.length > 0);
 
-  if (loading || items.length > 0 || hasFilters) return null;
+  if (loading || items.length > 0 || hasFilters || dismissed) return null;
 
-  const onSeed = async () => {
+  const toggle = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const totalItems = STARTER_PACKS.filter((p) => selected.has(p.id)).reduce(
+    (sum, p) => sum + p.items.length,
+    0,
+  );
+
+  const onConfirm = async () => {
+    if (selected.size === 0) {
+      setDismissed(true);
+      return;
+    }
     setSeeding(true);
     setError(null);
     try {
-      await seedSampleData();
+      await seedPacks([...selected]);
       bumpItems();
       bumpCategories();
       bumpTags();
@@ -56,20 +79,64 @@ function EmptyDatabaseOverlay() {
   };
 
   return (
-    <div className="absolute inset-0 flex items-center justify-center bg-background/90 backdrop-blur-sm z-10">
-      <div className="max-w-sm text-center space-y-4 p-6 border rounded-lg bg-card shadow-sm">
-        <div className="text-4xl">📚</div>
-        <h2 className="text-lg font-semibold">Your stash is empty</h2>
-        <p className="text-sm text-muted-foreground">
-          Load a handful of sample commands, prompts, and snippets to see
-          Stash in action.
-        </p>
-        <Button onClick={onSeed} disabled={seeding}>
-          {seeding ? "Loading…" : "Load sample data"}
-        </Button>
-        {error ? (
-          <div className="text-xs text-destructive">{error}</div>
-        ) : null}
+    <div className="absolute inset-0 flex items-center justify-center bg-background/90 backdrop-blur-sm z-10 p-6">
+      <div className="w-full max-w-md max-h-full flex flex-col border rounded-lg bg-card shadow-sm overflow-hidden">
+        <div className="p-5 space-y-1 text-center border-b">
+          <div className="text-3xl">📚</div>
+          <h2 className="text-lg font-semibold">Welcome to Stash</h2>
+          <p className="text-sm text-muted-foreground">
+            Pick a few starter packs to explore, or start empty. You can
+            edit or delete anything later.
+          </p>
+        </div>
+        <div className="overflow-y-auto p-2">
+          {STARTER_PACKS.map((pack) => {
+            const checked = selected.has(pack.id);
+            return (
+              <label
+                key={pack.id}
+                className="flex items-start gap-2.5 p-2 rounded-md hover:bg-accent/50 cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => toggle(pack.id)}
+                  className="mt-0.5"
+                />
+                <div className="min-w-0">
+                  <div className="text-sm font-medium">
+                    {pack.name}
+                    <span className="font-normal text-xs text-muted-foreground">
+                      {" "}
+                      · {pack.items.length} items
+                    </span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {pack.description}
+                  </div>
+                </div>
+              </label>
+            );
+          })}
+        </div>
+        <div className="p-4 border-t space-y-2">
+          {error ? (
+            <div className="text-xs text-destructive">{error}</div>
+          ) : null}
+          <Button
+            className="w-full"
+            onClick={onConfirm}
+            disabled={seeding}
+          >
+            {seeding
+              ? "Adding…"
+              : selected.size > 0
+                ? `Add ${selected.size} pack${
+                    selected.size === 1 ? "" : "s"
+                  } (${totalItems} items)`
+                : "Start with an empty Stash"}
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -91,6 +158,11 @@ function App() {
   const globalShortcutKey = useSettingsStore(
     (s) => s.values["shortcut.global.key"],
   );
+  const backupAuto = useSettingsStore((s) => s.values["backup.auto"]);
+  const backupLastAt = useSettingsStore(
+    (s) => s.values["backup.lastAutoAt"],
+  );
+  const setSetting = useSettingsStore((s) => s.set);
 
   const requestFocusSearch = useUiStore((s) => s.requestFocusSearch);
   const requestNewItem = useUiStore((s) => s.requestNewItem);
@@ -109,6 +181,27 @@ function App() {
   useEffect(() => {
     void invoke("set_tray_visible", { visible: trayEnabled });
   }, [trayEnabled]);
+
+  // Automatic local backup: on startup, write a JSON snapshot if enough
+  // time has passed since the last one. Best-effort and silent.
+  useEffect(() => {
+    if (backupAuto === "off") return;
+    const intervalMs =
+      backupAuto === "daily" ? 86_400_000 : 604_800_000;
+    const last = backupLastAt ? Date.parse(backupLastAt) : NaN;
+    if (Number.isFinite(last) && Date.now() - last < intervalMs) return;
+    void (async () => {
+      try {
+        const backup = await exportBackup();
+        await invoke("write_auto_backup", {
+          json: JSON.stringify(backup, null, 2),
+        });
+        await setSetting("backup.lastAutoAt", new Date().toISOString());
+      } catch (e) {
+        console.error("auto backup failed", e);
+      }
+    })();
+  }, [backupAuto, backupLastAt, setSetting]);
 
   // Global shortcut: registration happens in Rust (robust against webview
   // permission/event quirks). We just push the current setting down.
