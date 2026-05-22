@@ -23,31 +23,35 @@ Stash stores, organizes, and runs the terminal commands, AI prompts, and code sn
 ## Features
 
 - Full-text search (SQLite FTS5) across titles, content, descriptions
-- Categories, tags, and type filters in the sidebar
+- Four item types — commands, prompts, snippets, notes — in one unified list
+- Categories with item-count badges, tags, and type filters in a collapsible sidebar
+- Drag an item from the list onto a category to file it
 - Parameterized items with `{{variable}}` placeholders and a fill-in form
-- Command execution in Terminal.app with danger detection
+- Command execution in Terminal.app with danger detection and a confirmation dialog
+- **Global quick-launch** — a configurable system-wide hotkey (default `⌘⇧Space`) opens a search bar from anywhere
+- Command palette (`⌘K`) inside the app
+- Menu bar tray with quick access to favorite and recent items
 - Markdown rendering for prompts and notes (GFM: tables, task lists, code blocks)
-- Command palette (`⌘K`) reaches everything
-- Menu bar tray icon, optional
+- Automatic local backups, plus manual JSON export / import
+- Starter packs (Git, Docker, FFmpeg, macOS, SSH, AI Prompts, SQL Snippets) on first launch
 - Light / Dark / System theme
-- JSON export and import for backup and sharing
 - Keyboard-first: arrows to navigate, `⌘F` to search, `⌘N` for new item, `Enter` to run the primary action
 - Sort items by Recently used / Most used / Newest / A → Z
 
 ## Install
 
-v0.1 is macOS-only and ships unsigned. Build from source for now.
+v0.1 is macOS-only (Apple Silicon) and ships unsigned.
 
-### Prerequisites
+### Download
 
-- macOS 12+
-- Node.js 18+
-- Rust (install via [rustup](https://rustup.rs))
+Grab the latest `.dmg` from the [Releases page](https://github.com/codeeren/stash/releases). Because the build is unsigned, on first launch **right-click the app and choose Open**, or allow it from System Settings → Privacy & Security.
 
-### Build
+### Build from source
+
+**Prerequisites:** macOS 12+, Node.js 18+, Rust (via [rustup](https://rustup.rs)).
 
 ```bash
-git clone https://github.com/erenyilmaz/stash.git
+git clone https://github.com/codeeren/stash.git
 cd stash
 npm install
 npm run tauri build
@@ -64,6 +68,7 @@ npm run tauri dev
 
 ## Usage
 
+- **`⌘⇧Space`** — global quick-launch (works from any app; configurable, can be turned off)
 - **`⌘K`** — command palette
 - **`⌘F`** — focus search
 - **`⌘N`** — new item
@@ -74,21 +79,22 @@ npm run tauri dev
 
 Commands are the only type that *executes*. Prompts, snippets, and notes are copied to your clipboard. Use categories and tags to group items; use types to pick behavior.
 
-Your data lives at `~/Library/Application Support/Stash/stash.db`.
+On a fresh install, Stash offers optional starter packs so you have something to explore right away.
+
+Your data lives in the app's folder under `~/Library/Application Support/`, with automatic JSON backups in its `backups/` subfolder.
 
 ## Safety
 
-Command execution always shows a confirmation dialog with the resolved command. Dangerous patterns (`rm -rf`, `sudo`, `curl … | sh`, `dd`, `mkfs`, `> /dev/...`) trigger a red warning before you can run. Every execution is logged.
-
-See [CLAUDE.md §5](CLAUDE.md) for the full security rules.
+Command execution always shows a confirmation dialog with the resolved command. Dangerous patterns (`rm -rf`, `sudo`, `curl … | sh`, `dd`, `mkfs`, `> /dev/...`) trigger a red warning before you can run. Every execution is logged. Stash never fetches or runs remote code — variables are resolved locally.
 
 ## Tech stack
 
 - [Tauri 2](https://tauri.app) (Rust) — smaller bundle and lower memory than Electron
-- [React 18](https://react.dev) + TypeScript + Vite
+- [React 19](https://react.dev) + TypeScript + Vite
 - [Tailwind CSS](https://tailwindcss.com) + [shadcn/ui](https://ui.shadcn.com)
 - [Zustand](https://zustand-demo.pmnd.rs) for state
 - SQLite (via `tauri-plugin-sql`) with FTS5 for search
+- `tauri-plugin-global-shortcut` for the quick-launch hotkey
 
 ## Roadmap
 
@@ -96,11 +102,9 @@ See [CLAUDE.md §5](CLAUDE.md) for the full security rules.
 - **v0.3** — iCloud / Syncthing sync
 - **v0.4** — Plugin system, imports from Raycast / Alfred, CLI companion
 
-Full roadmap in [CLAUDE.md §11](CLAUDE.md).
-
 ## Contributing
 
-Pull requests welcome. Keep changes small, follow Conventional Commits. See [CLAUDE.md §8-9](CLAUDE.md) for code conventions.
+Pull requests welcome. Keep changes small and follow [Conventional Commits](https://www.conventionalcommits.org). TypeScript is strict; Rust must be `clippy`-clean.
 
 ## License
 
