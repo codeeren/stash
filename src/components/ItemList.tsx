@@ -224,7 +224,7 @@ export function ItemList() {
           disabled={sortDisabled}
         >
           <SelectTrigger
-            className="h-6 text-xs border-0 bg-transparent dark:bg-transparent shadow-none px-1.5 py-0 gap-1 hover:bg-accent dark:hover:bg-accent hover:text-foreground focus:ring-0 focus-visible:ring-0 w-auto"
+            className="h-6 data-[size=default]:h-6 text-xs border-0 bg-transparent dark:bg-transparent shadow-none px-1.5 py-0 gap-1 hover:bg-accent dark:hover:bg-accent hover:text-foreground focus:ring-0 focus-visible:ring-0 w-auto"
             title={sortDisabled ? "Search uses relevance ranking" : "Sort items"}
           >
             <SelectValue />
