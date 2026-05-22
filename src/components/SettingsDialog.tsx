@@ -36,6 +36,15 @@ type SettingsDialogProps = {
 
 type Draft = Record<SettingKey, string>;
 
+type SettingsTab = "shortcuts" | "appearance" | "backup" | "about";
+
+const SETTINGS_TABS: { id: SettingsTab; label: string }[] = [
+  { id: "shortcuts", label: "Shortcuts" },
+  { id: "appearance", label: "Appearance" },
+  { id: "backup", label: "Backup" },
+  { id: "about", label: "About" },
+];
+
 type PendingImport = {
   fileName: string;
   backup: Backup;
@@ -51,14 +60,16 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const setSelectedItemId = useUiStore((s) => s.setSelectedItemId);
 
   const [draft, setDraft] = useState<Draft>(values);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<null | "export" | "import">(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, setPending] = useState<PendingImport | null>(null);
   const [appVersion, setAppVersion] = useState<string | null>(null);
+  const [tab, setTab] = useState<SettingsTab>("shortcuts");
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  // Snapshot of settings when the dialog opened, used to revert on Cancel.
+  const originalRef = useRef<Draft>(values);
 
   useEffect(() => {
     getVersion()
@@ -66,45 +77,42 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       .catch(() => setAppVersion(null));
   }, []);
 
+  // Snapshot the current settings only when the dialog opens, so Cancel
+  // can restore them. `values` is intentionally not a dependency.
   useEffect(() => {
     if (open) {
       setDraft(values);
+      originalRef.current = { ...values };
       setError(null);
       setNotice(null);
       setPending(null);
+      setTab("shortcuts");
     }
-  }, [open, values]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
+  // Changes apply live (so the user sees the effect immediately). update()
+  // both reflects the change in the UI and persists it.
   const update = (key: SettingKey, value: string) => {
     setDraft((d) => ({ ...d, [key]: value }));
+    void setValue(key, value);
     setError(null);
   };
 
   const reset = (key: SettingKey) => update(key, DEFAULT_SETTINGS[key]);
 
-  const onSave = async () => {
-    const entries = Object.entries(draft) as [SettingKey, string][];
-    const shortcutEntries = entries.filter(([k]) => k.startsWith("shortcut."));
-    const seen = new Map<string, SettingKey>();
-    for (const [k, v] of shortcutEntries) {
-      if (seen.has(v)) {
-        setError(`Shortcut ${v} is assigned to more than one action.`);
-        return;
+  // Save just closes — everything is already applied. Cancel restores the
+  // settings to the snapshot taken when the dialog opened.
+  const close = (save: boolean) => {
+    if (!save) {
+      const original = originalRef.current;
+      for (const key of Object.keys(original) as SettingKey[]) {
+        if (values[key] !== original[key]) {
+          void setValue(key, original[key]);
+        }
       }
-      seen.set(v, k);
     }
-
-    setSaving(true);
-    try {
-      for (const [k, v] of entries) {
-        if (values[k] !== v) await setValue(k, v);
-      }
-      onOpenChange(false);
-    } catch (e) {
-      setError(String(e));
-    } finally {
-      setSaving(false);
-    }
+    onOpenChange(false);
   };
 
   const onExport = async () => {
@@ -157,6 +165,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     try {
       await importBackup(JSON.stringify(pending.backup));
       await loadSettings();
+      // The imported settings are now the baseline — Cancel must not undo
+      // them.
+      originalRef.current = { ...useSettingsStore.getState().values };
       setSelectedItemId(null);
       bumpItems();
       bumpCategories();
@@ -173,303 +184,317 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        // Closing via X / Esc / overlay behaves like Cancel — revert.
+        if (!o) close(false);
+      }}
+    >
+      <DialogContent className="sm:max-w-2xl p-0 gap-0 overflow-hidden">
+        <DialogHeader className="px-5 pt-5 pb-3 border-b">
           <DialogTitle>Settings</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-5 py-2">
-          <div className="space-y-3">
-            <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Keyboard shortcuts
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label>Command palette</Label>
-                <button
-                  type="button"
-                  onClick={() => reset("shortcut.commandPalette")}
-                  className="text-xs text-muted-foreground hover:text-foreground"
-                >
-                  Reset
-                </button>
-              </div>
-              <ShortcutInput
-                value={draft["shortcut.commandPalette"]}
-                onChange={(v) => update("shortcut.commandPalette", v)}
-              />
-            </div>
-            <label className="flex items-start gap-2 pt-1 cursor-pointer">
-              <input
-                type="checkbox"
-                className="mt-0.5"
-                checked={draft["shortcut.global.enabled"] === "true"}
-                onChange={(e) => {
-                  const v = e.currentTarget.checked ? "true" : "false";
-                  update("shortcut.global.enabled", v);
-                  void setValue("shortcut.global.enabled", v);
-                }}
-              />
-              <div className="space-y-0.5">
-                <div className="text-sm">Global quick-launch</div>
-                <div className="text-xs text-muted-foreground">
-                  A system-wide hotkey that opens a search bar to run an
-                  item without opening Stash. Turn it off here if you'd
-                  rather not have one.
-                </div>
-              </div>
-            </label>
-            {draft["shortcut.global.enabled"] === "true" ? (
-              <div className="space-y-2 pl-6">
-                <div className="flex items-center justify-between">
-                  <Label>Quick-launch shortcut</Label>
-                  <button
-                    type="button"
-                    onClick={() => reset("shortcut.global.key")}
-                    className="text-xs text-muted-foreground hover:text-foreground"
-                  >
-                    Reset
-                  </button>
-                </div>
-                <ShortcutInput
-                  value={draft["shortcut.global.key"]}
-                  onChange={(v) => {
-                    update("shortcut.global.key", v);
-                    void setValue("shortcut.global.key", v);
-                  }}
-                />
-              </div>
-            ) : null}
-          </div>
+        <div className="flex h-[26rem]">
+          <nav className="w-40 flex-shrink-0 border-r p-2 space-y-0.5">
+            {SETTINGS_TABS.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setTab(t.id)}
+                className={cn(
+                  "w-full text-left px-2.5 py-1.5 rounded-md text-sm transition-colors",
+                  tab === t.id
+                    ? "bg-accent text-accent-foreground"
+                    : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+                )}
+              >
+                {t.label}
+              </button>
+            ))}
+          </nav>
 
-          <div className="space-y-3">
-            <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Appearance
-            </div>
-            <div className="space-y-2">
-              <Label>Theme</Label>
-              <div className="inline-flex rounded-md border p-0.5">
-                {(["light", "dark", "system"] as ThemeValue[]).map((t) => {
-                  const active = draft.theme === t;
-                  return (
+          <div className="flex-1 overflow-y-auto p-5 space-y-5">
+            {tab === "shortcuts" ? (
+              <>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label>Command palette</Label>
                     <button
-                      key={t}
                       type="button"
-                      onClick={() => {
-                        update("theme", t);
-                        void setValue("theme", t);
-                      }}
-                      className={cn(
-                        "px-3 py-1 text-xs rounded capitalize transition-colors",
-                        active
-                          ? "bg-accent text-accent-foreground"
-                          : "text-muted-foreground hover:text-foreground",
-                      )}
+                      onClick={() => reset("shortcut.commandPalette")}
+                      className="text-xs text-muted-foreground hover:text-foreground"
                     >
-                      {t}
+                      Reset
                     </button>
-                  );
-                })}
-              </div>
-            </div>
-            <label className="flex items-start gap-2 pt-1 cursor-pointer">
-              <input
-                type="checkbox"
-                className="mt-0.5"
-                checked={draft["tray.enabled"] !== "false"}
-                onChange={(e) => {
-                  const v = e.currentTarget.checked ? "true" : "false";
-                  update("tray.enabled", v);
-                  void setValue("tray.enabled", v);
-                }}
-              />
-              <div className="space-y-0.5">
-                <div className="text-sm">Show menu bar icon</div>
-                <div className="text-xs text-muted-foreground">
-                  Off: closing the window quits Stash. On: closing hides
-                  to the menu bar.
+                  </div>
+                  <ShortcutInput
+                    value={draft["shortcut.commandPalette"]}
+                    onChange={(v) => update("shortcut.commandPalette", v)}
+                  />
                 </div>
-              </div>
-            </label>
-            {draft["tray.enabled"] !== "false" ? (
-              <div className="space-y-2 pl-6">
-                <Label>Menu bar item order</Label>
-                <div className="inline-flex rounded-md border p-0.5 flex-wrap">
-                  {(
-                    [
-                      { v: "newest", label: "Newest" },
-                      { v: "recent", label: "Recently used" },
-                      { v: "mostUsed", label: "Most used" },
-                      { v: "alpha", label: "A → Z" },
-                    ] as { v: SortValue; label: string }[]
-                  ).map((opt) => {
-                    const active = draft["tray.sort"] === opt.v;
-                    return (
+                <label className="flex items-start gap-2 pt-1 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5"
+                    checked={draft["shortcut.global.enabled"] === "true"}
+                    onChange={(e) => {
+                      const v = e.currentTarget.checked ? "true" : "false";
+                      update("shortcut.global.enabled", v);
+                    }}
+                  />
+                  <div className="space-y-0.5">
+                    <div className="text-sm">Global quick-launch</div>
+                    <div className="text-xs text-muted-foreground">
+                      A system-wide hotkey that opens a search bar to run
+                      an item without opening Stash. Turn it off here if
+                      you'd rather not have one.
+                    </div>
+                  </div>
+                </label>
+                {draft["shortcut.global.enabled"] === "true" ? (
+                  <div className="space-y-2 pl-6">
+                    <div className="flex items-center justify-between">
+                      <Label>Quick-launch shortcut</Label>
                       <button
-                        key={opt.v}
                         type="button"
-                        onClick={() => {
-                          update("tray.sort", opt.v);
-                          void setValue("tray.sort", opt.v);
-                        }}
-                        className={cn(
-                          "px-3 py-1 text-xs rounded transition-colors",
-                          active
-                            ? "bg-accent text-accent-foreground"
-                            : "text-muted-foreground hover:text-foreground",
-                        )}
+                        onClick={() => reset("shortcut.global.key")}
+                        className="text-xs text-muted-foreground hover:text-foreground"
                       >
-                        {opt.label}
+                        Reset
                       </button>
-                    );
-                  })}
-                </div>
-              </div>
+                    </div>
+                    <ShortcutInput
+                      value={draft["shortcut.global.key"]}
+                      onChange={(v) => update("shortcut.global.key", v)}
+                    />
+                  </div>
+                ) : null}
+              </>
             ) : null}
-          </div>
 
-          <div className="space-y-3">
-            <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Backup
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={onExport}
-                disabled={busy !== null}
-              >
-                {busy === "export" ? "Exporting…" : "Export JSON"}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={onImportClick}
-                disabled={busy !== null}
-              >
-                Import JSON…
-              </Button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="application/json,.json"
-                className="hidden"
-                onChange={onFileSelected}
-              />
-            </div>
-            <div className="text-xs text-muted-foreground">
-              Import replaces all current data. Export first if you want a
-              copy.
-            </div>
-
-            <div className="space-y-2 pt-1">
-              <Label>Automatic backup</Label>
-              <div className="inline-flex rounded-md border p-0.5">
-                {(
-                  [
-                    { v: "off", label: "Off" },
-                    { v: "daily", label: "Daily" },
-                    { v: "weekly", label: "Weekly" },
-                  ] as { v: BackupAutoValue; label: string }[]
-                ).map((opt) => {
-                  const active = draft["backup.auto"] === opt.v;
-                  return (
-                    <button
-                      key={opt.v}
-                      type="button"
-                      onClick={() => {
-                        update("backup.auto", opt.v);
-                        void setValue("backup.auto", opt.v);
-                      }}
-                      className={cn(
-                        "px-3 py-1 text-xs rounded transition-colors",
-                        active
-                          ? "bg-accent text-accent-foreground"
-                          : "text-muted-foreground hover:text-foreground",
-                      )}
-                    >
-                      {opt.label}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs text-muted-foreground">
-                  {values["backup.lastAutoAt"]
-                    ? `Last backup: ${new Date(
-                        values["backup.lastAutoAt"],
-                      ).toLocaleString()}`
-                    : "No automatic backup yet"}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => void invoke("reveal_backups_folder")}
-                  className="text-xs text-muted-foreground hover:text-foreground"
-                >
-                  Show in Finder
-                </button>
-              </div>
-            </div>
-
-            {pending ? (
-              <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 space-y-2">
-                <div className="text-sm">
-                  Replace all current data with contents of
-                  <code className="mx-1">{pending.fileName}</code>?
+            {tab === "appearance" ? (
+              <>
+                <div className="space-y-2">
+                  <Label>Theme</Label>
+                  <div className="inline-flex rounded-md border p-0.5">
+                    {(["light", "dark", "system"] as ThemeValue[]).map(
+                      (t) => {
+                        const active = draft.theme === t;
+                        return (
+                          <button
+                            key={t}
+                            type="button"
+                            onClick={() => update("theme", t)}
+                            className={cn(
+                              "px-3 py-1 text-xs rounded capitalize transition-colors",
+                              active
+                                ? "bg-accent text-accent-foreground"
+                                : "text-muted-foreground hover:text-foreground",
+                            )}
+                          >
+                            {t}
+                          </button>
+                        );
+                      },
+                    )}
+                  </div>
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  Found {pending.backup.items.length} items,{" "}
-                  {pending.backup.categories.length} categories,{" "}
-                  {pending.backup.tags.length} tags.
-                </div>
-                <div className="flex gap-2 pt-1">
+                <label className="flex items-start gap-2 pt-1 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5"
+                    checked={draft["tray.enabled"] !== "false"}
+                    onChange={(e) => {
+                      const v = e.currentTarget.checked ? "true" : "false";
+                      update("tray.enabled", v);
+                    }}
+                  />
+                  <div className="space-y-0.5">
+                    <div className="text-sm">Show menu bar icon</div>
+                    <div className="text-xs text-muted-foreground">
+                      Off: closing the window quits Stash. On: closing
+                      hides to the menu bar.
+                    </div>
+                  </div>
+                </label>
+                {draft["tray.enabled"] !== "false" ? (
+                  <div className="space-y-2 pl-6">
+                    <Label>Menu bar item order</Label>
+                    <div className="inline-flex rounded-md border p-0.5 flex-wrap">
+                      {(
+                        [
+                          { v: "newest", label: "Newest" },
+                          { v: "recent", label: "Recently used" },
+                          { v: "mostUsed", label: "Most used" },
+                          { v: "alpha", label: "A → Z" },
+                        ] as { v: SortValue; label: string }[]
+                      ).map((opt) => {
+                        const active = draft["tray.sort"] === opt.v;
+                        return (
+                          <button
+                            key={opt.v}
+                            type="button"
+                            onClick={() => update("tray.sort", opt.v)}
+                            className={cn(
+                              "px-3 py-1 text-xs rounded transition-colors",
+                              active
+                                ? "bg-accent text-accent-foreground"
+                                : "text-muted-foreground hover:text-foreground",
+                            )}
+                          >
+                            {opt.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
+              </>
+            ) : null}
+
+            {tab === "backup" ? (
+              <>
+                <div className="flex gap-2">
                   <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={onConfirmImport}
+                    variant="outline"
+                    onClick={onExport}
                     disabled={busy !== null}
                   >
-                    {busy === "import" ? "Importing…" : "Yes, replace"}
+                    {busy === "export" ? "Exporting…" : "Export JSON"}
                   </Button>
                   <Button
                     variant="outline"
-                    size="sm"
-                    onClick={() => setPending(null)}
+                    onClick={onImportClick}
                     disabled={busy !== null}
                   >
-                    Cancel
+                    Import JSON…
                   </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="application/json,.json"
+                    className="hidden"
+                    onChange={onFileSelected}
+                  />
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Import replaces all current data. Export first if you
+                  want a copy.
+                </div>
+
+                <div className="space-y-2 pt-1">
+                  <Label>Automatic backup</Label>
+                  <div className="inline-flex rounded-md border p-0.5">
+                    {(
+                      [
+                        { v: "off", label: "Off" },
+                        { v: "daily", label: "Daily" },
+                        { v: "weekly", label: "Weekly" },
+                      ] as { v: BackupAutoValue; label: string }[]
+                    ).map((opt) => {
+                      const active = draft["backup.auto"] === opt.v;
+                      return (
+                        <button
+                          key={opt.v}
+                          type="button"
+                          onClick={() => update("backup.auto", opt.v)}
+                          className={cn(
+                            "px-3 py-1 text-xs rounded transition-colors",
+                            active
+                              ? "bg-accent text-accent-foreground"
+                              : "text-muted-foreground hover:text-foreground",
+                          )}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs text-muted-foreground">
+                      {values["backup.lastAutoAt"]
+                        ? `Last backup: ${new Date(
+                            values["backup.lastAutoAt"],
+                          ).toLocaleString()}`
+                        : "No automatic backup yet"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => void invoke("reveal_backups_folder")}
+                      className="text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      Show in Finder
+                    </button>
+                  </div>
+                </div>
+
+                {pending ? (
+                  <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 space-y-2">
+                    <div className="text-sm">
+                      Replace all current data with contents of
+                      <code className="mx-1">{pending.fileName}</code>?
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Found {pending.backup.items.length} items,{" "}
+                      {pending.backup.categories.length} categories,{" "}
+                      {pending.backup.tags.length} tags.
+                    </div>
+                    <div className="flex gap-2 pt-1">
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={onConfirmImport}
+                        disabled={busy !== null}
+                      >
+                        {busy === "import" ? "Importing…" : "Yes, replace"}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPending(null)}
+                        disabled={busy !== null}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
+
+                {notice ? (
+                  <div className="text-xs text-foreground">{notice}</div>
+                ) : null}
+              </>
+            ) : null}
+
+            {tab === "about" ? (
+              <div className="space-y-2">
+                <div className="text-sm font-medium">Stash</div>
+                <div className="text-xs text-muted-foreground">
+                  Version {appVersion ?? "—"}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  A native macOS hub for the commands, prompts, and
+                  snippets you keep forgetting. Local-first and open
+                  source (MIT).
                 </div>
               </div>
             ) : null}
 
-            {notice ? (
-              <div className="text-xs text-foreground">{notice}</div>
+            {error ? (
+              <div className="text-sm text-destructive break-words">
+                {error}
+              </div>
             ) : null}
-          </div>
-
-          {error ? (
-            <div className="text-sm text-destructive break-words">
-              {error}
-            </div>
-          ) : null}
-
-          <div className="flex items-center justify-between border-t pt-3 text-xs text-muted-foreground">
-            <span>Stash</span>
-            <span>Version {appVersion ?? "—"}</span>
           </div>
         </div>
 
-        <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={saving}
-          >
+        <DialogFooter className="px-5 py-3 border-t">
+          <Button variant="outline" onClick={() => close(false)}>
             Cancel
           </Button>
-          <Button onClick={onSave} disabled={saving}>
-            {saving ? "Saving…" : "Save"}
-          </Button>
+          <Button onClick={() => close(true)}>Save</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
