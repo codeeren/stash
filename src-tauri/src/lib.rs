@@ -1,3 +1,4 @@
+mod backup;
 mod menu;
 mod migrations;
 mod shell;
@@ -23,6 +24,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             shell::execute_command,
             shortcut::set_global_shortcut,
+            backup::write_auto_backup,
+            backup::reveal_backups_folder,
             tray::set_tray_visible,
             tray::set_tray_items,
             tray::set_tray_title,

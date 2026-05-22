@@ -7,11 +7,15 @@ export type SettingKey =
   | "theme"
   | "tray.enabled"
   | "tray.sort"
-  | "items.sort";
+  | "items.sort"
+  | "backup.auto"
+  | "backup.lastAutoAt";
 
 export type ThemeValue = "light" | "dark" | "system";
 
 export type SortValue = "recent" | "mostUsed" | "newest" | "alpha";
+
+export type BackupAutoValue = "off" | "daily" | "weekly";
 
 export const DEFAULT_SETTINGS: Record<SettingKey, string> = {
   "shortcut.commandPalette": "Mod+K",
@@ -24,6 +28,9 @@ export const DEFAULT_SETTINGS: Record<SettingKey, string> = {
   "tray.enabled": "true",
   "tray.sort": "newest",
   "items.sort": "recent",
+  // Automatic local JSON backup: a single file, overwritten on schedule.
+  "backup.auto": "weekly",
+  "backup.lastAutoAt": "",
 };
 
 type SettingRow = { key: string; value: string };

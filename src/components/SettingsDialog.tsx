@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { getVersion } from "@tauri-apps/api/app";
+import { invoke } from "@tauri-apps/api/core";
 import {
   Dialog,
   DialogContent,
@@ -18,6 +19,7 @@ import {
   readFileAsText,
 } from "@/lib/backup";
 import {
+  type BackupAutoValue,
   DEFAULT_SETTINGS,
   type SettingKey,
   type SortValue,
@@ -357,6 +359,55 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             <div className="text-xs text-muted-foreground">
               Import replaces all current data. Export first if you want a
               copy.
+            </div>
+
+            <div className="space-y-2 pt-1">
+              <Label>Automatic backup</Label>
+              <div className="inline-flex rounded-md border p-0.5">
+                {(
+                  [
+                    { v: "off", label: "Off" },
+                    { v: "daily", label: "Daily" },
+                    { v: "weekly", label: "Weekly" },
+                  ] as { v: BackupAutoValue; label: string }[]
+                ).map((opt) => {
+                  const active = draft["backup.auto"] === opt.v;
+                  return (
+                    <button
+                      key={opt.v}
+                      type="button"
+                      onClick={() => {
+                        update("backup.auto", opt.v);
+                        void setValue("backup.auto", opt.v);
+                      }}
+                      className={cn(
+                        "px-3 py-1 text-xs rounded transition-colors",
+                        active
+                          ? "bg-accent text-accent-foreground"
+                          : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs text-muted-foreground">
+                  {values["backup.lastAutoAt"]
+                    ? `Last backup: ${new Date(
+                        values["backup.lastAutoAt"],
+                      ).toLocaleString()}`
+                    : "No automatic backup yet"}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void invoke("reveal_backups_folder")}
+                  className="text-xs text-muted-foreground hover:text-foreground"
+                >
+                  Show in Finder
+                </button>
+              </div>
             </div>
 
             {pending ? (
