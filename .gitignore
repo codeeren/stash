@@ -29,3 +29,8 @@ dist-ssr
 
 # Internal product/strategy notes — local only, not for the public repo
 CLAUDE.md
+
+# SQLite databases — personal user data must never be committed
+*.db
+*.db-shm
+*.db-wal
