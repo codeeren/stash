@@ -4,6 +4,22 @@ All notable changes to Stash will be documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+## [0.1.4] — 2026-05-22
+
+### Added
+
+- Settings is now a tabbed dialog (Shortcuts, Appearance, Backup, About)
+  with a left-hand nav, so it stays readable as options grow
+
+### Changed
+
+- Settings apply live for instant preview; Save keeps them and Cancel /
+  Esc restores the state from when the dialog was opened
+- The macOS build is now properly ad-hoc signed, so downloaded copies
+  offer the standard "Open Anyway" path in System Settings instead of
+  being rejected outright (the app is still not notarized)
+- Thinner, theme-aware scrollbars
+
 ## [0.1.3] — 2026-05-22
 
 ### Added
