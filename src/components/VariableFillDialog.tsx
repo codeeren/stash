@@ -222,6 +222,7 @@ export function VariableFillDialog({
           }}
           itemId={item.id}
           resolvedCommand={preview}
+          silent={item.silent}
         />
       ) : null}
     </Dialog>

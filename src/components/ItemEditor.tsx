@@ -66,6 +66,7 @@ type FormState = {
   description: string;
   categoryId: string;
   isFavorite: boolean;
+  silent: boolean;
   tagsInput: string;
 };
 
@@ -77,6 +78,7 @@ const EMPTY: FormState = {
   description: "",
   categoryId: NO_CATEGORY,
   isFavorite: false,
+  silent: false,
   tagsInput: "",
 };
 
@@ -90,6 +92,7 @@ function toFormState(item: ItemWithRelations): FormState {
     categoryId:
       item.categoryId !== null ? String(item.categoryId) : NO_CATEGORY,
     isFavorite: item.isFavorite,
+    silent: item.silent,
     tagsInput: item.tags.map((t) => t.name).join(", "),
   };
 }
@@ -199,6 +202,9 @@ export function ItemEditor({
         description: form.description.trim() || null,
         categoryId,
         isFavorite: form.isFavorite,
+        // Only commands run; the silent flag is meaningless for other
+        // types, so always store false for them.
+        silent: form.type === "command" ? form.silent : false,
       };
 
       let saved: Item;
@@ -564,6 +570,25 @@ export function ItemEditor({
             />
             Favorite
           </label>
+
+          {form.type === "command" ? (
+            <label className="flex items-start gap-2 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.silent}
+                onChange={(e) => update("silent", e.currentTarget.checked)}
+                className="h-4 w-4 mt-0.5 rounded border-input"
+              />
+              <span className="space-y-0.5">
+                <span className="block">Run silently in the background</span>
+                <span className="block text-xs text-muted-foreground">
+                  No Terminal window. Best for short commands with little or
+                  no output (e.g. lock screen, flush DNS). The confirmation
+                  dialog still appears before each run.
+                </span>
+              </span>
+            </label>
+          ) : null}
 
           {error ? (
             <div className="text-sm text-destructive">{error}</div>

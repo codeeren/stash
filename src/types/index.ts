@@ -16,6 +16,9 @@ export type Item = {
   description: string | null;
   categoryId: number | null;
   isFavorite: boolean;
+  // Commands only: when true, run silently in the background instead of
+  // opening Terminal. Opt-in per item.
+  silent: boolean;
   useCount: number;
   lastUsedAt: string | null;
   createdAt: string;
@@ -30,6 +33,7 @@ export type NewItem = {
   description?: string | null;
   categoryId?: number | null;
   isFavorite?: boolean;
+  silent?: boolean;
 };
 
 export type ItemUpdate = Partial<
@@ -42,6 +46,7 @@ export type ItemUpdate = Partial<
     | "description"
     | "categoryId"
     | "isFavorite"
+    | "silent"
   >
 >;
 

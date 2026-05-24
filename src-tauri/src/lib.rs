@@ -23,6 +23,7 @@ pub fn run() {
         )
         .invoke_handler(tauri::generate_handler![
             shell::execute_command,
+            shell::execute_command_silent,
             shortcut::set_global_shortcut,
             backup::write_auto_backup,
             backup::reveal_backups_folder,

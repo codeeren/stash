@@ -209,8 +209,8 @@ export async function getItemWithRelations(
 export async function createItem(input: NewItem): Promise<Item> {
   const db = await getDb();
   const res = await db.execute(
-    `INSERT INTO items (type, title, content, language, description, category_id, is_favorite)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    `INSERT INTO items (type, title, content, language, description, category_id, is_favorite, silent)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
     [
       input.type,
       input.title,
@@ -219,6 +219,7 @@ export async function createItem(input: NewItem): Promise<Item> {
       input.description ?? null,
       input.categoryId ?? null,
       boolToInt(input.isFavorite) ?? 0,
+      boolToInt(input.silent) ?? 0,
     ],
   );
   const created = await getItem(res.lastInsertId as number);
@@ -246,6 +247,7 @@ export async function updateItem(
   if (patch.categoryId !== undefined) set("category_id", patch.categoryId);
   if (patch.isFavorite !== undefined)
     set("is_favorite", boolToInt(patch.isFavorite));
+  if (patch.silent !== undefined) set("silent", boolToInt(patch.silent));
 
   if (fields.length === 0) {
     const existing = await getItem(id);
@@ -292,6 +294,7 @@ export async function duplicateItem(id: number): Promise<Item> {
     description: full.description ?? undefined,
     categoryId: full.categoryId ?? undefined,
     isFavorite: false,
+    silent: full.silent,
   });
 
   if (full.tags.length > 0) {

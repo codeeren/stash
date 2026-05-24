@@ -394,6 +394,7 @@ export function ItemDetail() {
           onOpenChange={setExecuteOpen}
           itemId={item.id}
           resolvedCommand={item.content}
+          silent={item.silent}
         />
       ) : null}
       <ConfirmDeleteDialog

@@ -16,6 +16,7 @@ export type ItemRow = {
   description: string | null;
   category_id: number | null;
   is_favorite: number;
+  silent: number;
   use_count: number;
   last_used_at: string | null;
   created_at: string;
@@ -58,6 +59,7 @@ export function rowToItem(r: ItemRow): Item {
     description: r.description,
     categoryId: r.category_id,
     isFavorite: Boolean(r.is_favorite),
+    silent: Boolean(r.silent),
     useCount: r.use_count,
     lastUsedAt: r.last_used_at,
     createdAt: r.created_at,

@@ -14,8 +14,20 @@ pub fn migrations() -> Vec<Migration> {
             sql: SETTINGS_TABLE,
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 3,
+            description: "items_silent",
+            sql: ITEMS_SILENT,
+            kind: MigrationKind::Up,
+        },
     ]
 }
+
+// Per-item opt-in: when true, the command runs silently in the background
+// (no Terminal window). Defaults to false to keep the existing safe path.
+const ITEMS_SILENT: &str = r#"
+ALTER TABLE items ADD COLUMN silent BOOLEAN DEFAULT 0;
+"#;
 
 const SETTINGS_TABLE: &str = r#"
 CREATE TABLE settings (
