@@ -27,7 +27,7 @@ Stash stores, organizes, and runs the terminal commands, AI prompts, and code sn
 - Categories with item-count badges, tags, and type filters in a collapsible sidebar
 - Drag an item from the list onto a category to file it
 - Parameterized items with `{{variable}}` placeholders and a fill-in form
-- Command execution in Terminal.app with danger detection and a confirmation dialog
+- Command execution in Terminal.app with danger detection and a confirmation dialog — or, opt-in per item, silently in the background with the result shown inline
 - **Global quick-launch** — a configurable system-wide hotkey (default `⌘⇧Space`) opens a search bar from anywhere
 - Command palette (`⌘K`) inside the app
 - Menu bar tray with quick access to favorite and recent items

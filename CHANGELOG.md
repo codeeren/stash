@@ -4,6 +4,17 @@ All notable changes to Stash will be documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+## [0.1.5] — 2026-05-22
+
+### Added
+
+- Per-item **"Run silently in the background"** option for commands. When
+  enabled, the command runs without opening Terminal.app and the dialog
+  shows the result inline ("Done" or "Didn't work" with any output it
+  printed). Best for short, output-less commands like locking the screen
+  or flushing DNS. Off by default; the confirmation dialog and danger
+  detection still apply.
+
 ## [0.1.4] — 2026-05-22
 
 ### Added
