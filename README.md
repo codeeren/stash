@@ -44,7 +44,7 @@ Stash stores, organizes, and runs the terminal commands, AI prompts, and code sn
 
 ## Install
 
-v0.1 is macOS-only (Apple Silicon) and ships unsigned.
+Stash is currently macOS-only (Apple Silicon) and ships unsigned.
 
 ### Download
 
