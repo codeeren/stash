@@ -17,7 +17,11 @@ Stash stores, organizes, and runs the terminal commands, AI prompts, and code sn
 
 <p align="center">
   <img src="docs/screenshots/editor.png" alt="New item editor" width="49%" />
-  <img src="docs/screenshots/execute.png" alt="Run command dialog" width="49%" />
+  <img src="docs/screenshots/quicklaunch.png" alt="Global quick-launch" width="49%" />
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/execute.png" alt="Fill variables and run" width="60%" />
 </p>
 
 ## Features
