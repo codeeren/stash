@@ -5,6 +5,7 @@ import {
   MessageSquareIcon,
   TerminalIcon,
 } from "lucide-react";
+import { DragRegion } from "@/components/DragRegion";
 import { ItemEditor } from "@/components/ItemEditor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -167,6 +168,7 @@ export function ItemList() {
 
   return (
     <section className="w-96 shrink-0 border-r flex flex-col">
+      <DragRegion />
       <div className="p-2 border-b flex items-center gap-2">
         <Input
           ref={searchRef}

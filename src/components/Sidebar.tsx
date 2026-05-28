@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { CategoryEditor } from "@/components/CategoryEditor";
 import { CategoryIcon } from "@/components/CategoryIcon";
+import { DragRegion } from "@/components/DragRegion";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { useCategories } from "@/hooks/useCategories";
 import { useSidebarCounts } from "@/hooks/useSidebarCounts";
@@ -258,12 +259,9 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
   const allActive = filters.categoryId === undefined && !filters.favoritesOnly;
 
   return (
-    <aside className="w-56 shrink-0 border-r bg-muted/20 flex flex-col">
-      <div className="px-4 py-3 border-b">
-        <h1 className="text-sm font-semibold tracking-tight">Stash</h1>
-      </div>
-
-      <nav className="flex-1 overflow-y-auto p-2">
+    <aside className="w-56 shrink-0 border-r bg-sidebar flex flex-col">
+      <DragRegion />
+      <nav className="flex-1 overflow-y-auto px-2 pb-2">
         {/* Library — primary views */}
         <div className="space-y-0.5">
           <NavRow

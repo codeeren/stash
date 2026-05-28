@@ -19,7 +19,9 @@
         "height": 700,
         "minWidth": 900,
         "minHeight": 500,
-        "dragDropEnabled": false
+        "dragDropEnabled": false,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true
       },
       {
         "label": "quicklaunch",

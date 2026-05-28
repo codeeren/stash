@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { StarIcon } from "lucide-react";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
+import { DragRegion } from "@/components/DragRegion";
 import { ExecuteDialog } from "@/components/ExecuteDialog";
 import { ItemEditor } from "@/components/ItemEditor";
 import { MarkdownView } from "@/components/MarkdownView";
@@ -99,32 +100,44 @@ export function ItemDetail() {
 
   if (selectedItemId === null) {
     return (
-      <section className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
-        Select an item to view.
+      <section className="flex-1 flex flex-col">
+        <DragRegion />
+        <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
+          Select an item to view.
+        </div>
       </section>
     );
   }
 
   if (loading && !item) {
     return (
-      <section className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
-        Loading…
+      <section className="flex-1 flex flex-col">
+        <DragRegion />
+        <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
+          Loading…
+        </div>
       </section>
     );
   }
 
   if (error) {
     return (
-      <section className="flex-1 flex items-center justify-center text-sm text-destructive">
-        {error}
+      <section className="flex-1 flex flex-col">
+        <DragRegion />
+        <div className="flex-1 flex items-center justify-center text-sm text-destructive">
+          {error}
+        </div>
       </section>
     );
   }
 
   if (!item) {
     return (
-      <section className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
-        Item not found.
+      <section className="flex-1 flex flex-col">
+        <DragRegion />
+        <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
+          Item not found.
+        </div>
       </section>
     );
   }
@@ -159,6 +172,7 @@ export function ItemDetail() {
 
   return (
     <section className="flex-1 overflow-y-auto flex flex-col">
+      <DragRegion />
       <header className="px-6 py-4 border-b">
         <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground mb-1">
           <span>{item.type}</span>
