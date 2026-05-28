@@ -4,6 +4,25 @@ All notable changes to Stash will be documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+## [0.1.6] — 2026-05-28
+
+### Fixed
+
+- macOS Sequoia no longer shows the "Support for Intel-based apps is
+  ending" warning when opening Stash. The Tauri bundler injects a stale
+  `LSRequiresCarbon = true` key into the Info.plist that Sequoia reads
+  as an old Intel binary; a post-bundle step strips it, re-signs the
+  app, and repacks the DMG.
+- Silent commands no longer hang the dialog when the command is a
+  long-running service. After a short wait window the run returns
+  "Started in background" and the process keeps running on its own.
+
+### Changed
+
+- New `npm run build:release` script (`tauri build` + the post-bundle
+  patch). Use it for actual releases; plain `tauri build` still works
+  for local testing.
+
 ## [0.1.5] — 2026-05-22
 
 ### Added

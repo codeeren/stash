@@ -26,6 +26,7 @@ type SilentResult = {
   exitCode: number | null;
   stdout: string;
   stderr: string;
+  detached: boolean;
 };
 
 export function ExecuteDialog({
@@ -77,8 +78,9 @@ export function ExecuteDialog({
     }
   };
 
-  const succeeded = result !== null && result.exitCode === 0;
-  const failed = result !== null && result.exitCode !== 0;
+  const detached = result !== null && result.detached;
+  const succeeded = result !== null && !result.detached && result.exitCode === 0;
+  const failed = result !== null && !result.detached && result.exitCode !== 0;
   const combinedOutput = result
     ? [result.stdout, result.stderr].filter(Boolean).join("\n").trim()
     : "";
@@ -135,21 +137,34 @@ export function ExecuteDialog({
           {result ? (
             <div
               className={
-                succeeded
-                  ? "rounded-md border border-emerald-500/40 bg-emerald-500/10 p-3 space-y-2"
-                  : "rounded-md border border-destructive/40 bg-destructive/10 p-3 space-y-2"
+                detached
+                  ? "rounded-md border bg-muted/50 p-3 space-y-2"
+                  : succeeded
+                    ? "rounded-md border border-emerald-500/40 bg-emerald-500/10 p-3 space-y-2"
+                    : "rounded-md border border-destructive/40 bg-destructive/10 p-3 space-y-2"
               }
             >
               <div
                 className={
-                  succeeded
-                    ? "text-sm font-medium text-emerald-600 dark:text-emerald-400"
-                    : "text-sm font-medium text-destructive"
+                  detached
+                    ? "text-sm font-medium"
+                    : succeeded
+                      ? "text-sm font-medium text-emerald-600 dark:text-emerald-400"
+                      : "text-sm font-medium text-destructive"
                 }
               >
-                {succeeded ? "✓ Done" : "✗ Didn't work"}
+                {detached
+                  ? "→ Started in background"
+                  : succeeded
+                    ? "✓ Done"
+                    : "✗ Didn't work"}
               </div>
-              {combinedOutput ? (
+              {detached ? (
+                <div className="text-xs text-muted-foreground">
+                  The command is still running and will keep going on its
+                  own. Any output past this point isn't captured.
+                </div>
+              ) : combinedOutput ? (
                 <pre className="text-xs bg-background/60 rounded p-2 max-h-48 overflow-y-auto whitespace-pre-wrap break-words font-mono">
                   {combinedOutput}
                 </pre>
