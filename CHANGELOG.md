@@ -4,6 +4,24 @@ All notable changes to Stash will be documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+## [0.1.7] — 2026-05-28
+
+### Changed
+
+- **Two-tone dark theme.** The sidebar and the content panels now use
+  different dark shades (sidebar `#262626`, content `#20201e`) for a
+  clearer separation.
+- **Edge-to-edge window.** The macOS title bar is transparent so each
+  panel's colour extends to the very top — no more seam between the
+  title bar and the app's chrome. Traffic lights stay where they are.
+- The redundant "Stash" label inside the sidebar is gone — the OS
+  already shows the app name in the Dock and menu bar.
+
+### Fixed
+
+- The window can be dragged from the top strip even while Stash is the
+  focused app (previously you had to click into another app first).
+
 ## [0.1.6] — 2026-05-28
 
 ### Fixed
