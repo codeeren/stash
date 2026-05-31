@@ -476,8 +476,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 </div>
                 <div className="text-xs text-muted-foreground">
                   A native macOS hub for the commands, prompts, and
-                  snippets you keep forgetting. Local-first and open
-                  source (MIT).
+                  snippets you keep forgetting. Local-first. Source
+                  available under the PolyForm Noncommercial 1.0.0
+                  license.
                 </div>
               </div>
             ) : null}

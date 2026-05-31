@@ -4,6 +4,13 @@ All notable changes to Stash will be documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+### Changed
+
+- License switched from MIT to **PolyForm Noncommercial 1.0.0**. The
+  source remains publicly available and noncommercial use, modification,
+  and redistribution are still allowed; commercial use is now reserved
+  by the author.
+
 ## [0.1.7] — 2026-05-28
 
 ### Changed

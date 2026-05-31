@@ -120,4 +120,4 @@ Pull requests welcome. Keep changes small and follow [Conventional Commits](http
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+Source available under the **PolyForm Noncommercial 1.0.0** license — see [LICENSE](LICENSE). You can use, modify, and share Stash for any noncommercial purpose. Commercial use (selling Stash, offering it as a paid service, bundling it into a product you charge for) is reserved by the author.
