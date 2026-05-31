@@ -48,20 +48,28 @@ Stash is currently macOS-only (Apple Silicon) and ships unsigned.
 
 ### Download
 
-Grab the latest `.dmg` from the [Releases page](https://github.com/codeeren/stash/releases). Because the build is unsigned, on first launch **right-click the app and choose Open**, or allow it from System Settings → Privacy & Security.
+Grab the latest `.dmg` from the [Releases page](https://github.com/codeeren/stash/releases) and drag Stash into `/Applications`.
+
+The build is unsigned (no Apple Developer ID yet), so on first launch macOS Sequoia blocks the app. To get past the block, open Terminal and run:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/Stash.app
+```
+
+Then open Stash normally. You only need to do this once.
 
 ### Build from source
 
-**Prerequisites:** macOS 12+, Node.js 18+, Rust (via [rustup](https://rustup.rs)).
+**Prerequisites:** macOS 13+, Node.js 18+, Rust (via [rustup](https://rustup.rs)).
 
 ```bash
 git clone https://github.com/codeeren/stash.git
 cd stash
 npm install
-npm run tauri build
+npm run build:release
 ```
 
-The bundle lands in `src-tauri/target/release/bundle/macos/Stash.app`. Drag it into `/Applications`.
+The bundle lands in `src-tauri/target/release/bundle/macos/Stash.app`. Drag it into `/Applications`. (`build:release` runs `tauri build` and a post-bundle step that strips a stale Carbon flag from the Info.plist so macOS doesn't mistakenly flag the app as Intel-only.)
 
 ### Run in development
 
