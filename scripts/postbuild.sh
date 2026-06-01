@@ -21,15 +21,22 @@ fi
 # Re-sign (ad-hoc) — modifying the bundle invalidates the prior signature.
 codesign --force --deep --sign - "$APP" >/dev/null
 
-# Rebuild the DMG from the patched .app.
+# Rebuild the DMG from the patched .app — and add an Applications symlink
+# next to it so users can drag-and-drop inside the DMG window, matching
+# the standard macOS install convention.
 DMG=$(ls "$DMG_DIR"/Stash_*_aarch64.dmg 2>/dev/null | head -1 || true)
 if [ -n "$DMG" ]; then
+  STAGING=$(mktemp -d)
+  cp -R "$APP" "$STAGING/Stash.app"
+  ln -s /Applications "$STAGING/Applications"
+
   rm "$DMG"
   hdiutil create \
     -volname "Stash" \
-    -srcfolder "$APP" \
+    -srcfolder "$STAGING" \
     -ov \
     -format UDZO \
     "$DMG" >/dev/null
-  echo "postbuild: repacked $DMG (Carbon flag stripped)"
+  rm -rf "$STAGING"
+  echo "postbuild: repacked $DMG (Carbon stripped + Applications shortcut)"
 fi
