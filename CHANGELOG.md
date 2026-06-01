@@ -4,6 +4,15 @@ All notable changes to Stash will be documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+## [0.1.8] — 2026-06-01
+
+### Added
+
+- New app icon and matching menu-bar (tray) silhouette — a friendlier
+  bowl-of-cards illustration replaces the old chest.
+- The DMG now contains an Applications shortcut next to Stash.app, so
+  installation is the familiar drag-into-Applications gesture.
+
 ### Changed
 
 - License switched from MIT to **PolyForm Noncommercial 1.0.0**. The
