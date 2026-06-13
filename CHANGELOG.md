@@ -4,6 +4,16 @@ All notable changes to Stash will be documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+## [0.1.9] — 2026-06-13
+
+### Changed
+
+- Brand-new app icon, drawn from scratch: a fanned deck of cards on an
+  indigo squircle with a node-graph "hub" mark — Stash as the single
+  hub for your commands, prompts, and snippets. The menu-bar (tray)
+  icon is a clean stroked silhouette of the same deck, finally legible
+  at small sizes.
+
 ## [0.1.8] — 2026-06-01
 
 ### Added
