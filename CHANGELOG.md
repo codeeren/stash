@@ -4,6 +4,33 @@ All notable changes to Stash will be documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-06-21
+
+The AI milestone.
+
+### Added
+
+- **AI-assisted item creation.** In the item editor, describe what you
+  want in plain language and Stash drafts the item — type, title,
+  content (with `{{variable}}` placeholders), description, and tags —
+  for you to review and save. Stash shells out to an AI CLI you've
+  already installed and signed in to (Claude Code, Codex, or Gemini);
+  no API key is stored in Stash, and nothing runs without confirmation.
+  Configure it under Settings → AI, which auto-detects your installed
+  CLIs. Off by default.
+- **Per-item passphrase lock.** Hide an item's content behind a
+  passphrase. Locked items show a 🔒, reveal an unlock prompt in the
+  detail panel, and can't be run or copied (from the panel, the menu
+  bar, or Enter) until unlocked. This is a privacy gate, not encryption
+  — only the passphrase hash is stored; the content stays plaintext.
+
+### Changed
+
+- A command launched from the menu bar hides the main window again once
+  its dialog closes, so Stash returns to the tray.
+- A silent command that finishes with no output closes its dialog
+  immediately; output and errors still keep it open.
+
 ## [0.1.9] — 2026-06-13
 
 ### Changed

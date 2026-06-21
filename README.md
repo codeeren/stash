@@ -35,6 +35,8 @@ Stash stores, organizes, and runs the terminal commands, AI prompts, and code sn
 - **Global quick-launch** — a configurable system-wide hotkey (default `⌘⇧Space`) opens a search bar from anywhere
 - Command palette (`⌘K`) inside the app
 - Menu bar tray with quick access to favorite and recent items
+- **AI-assisted item creation** — describe what you want and Stash drafts the item (via an AI CLI you already have: Claude Code, Codex, or Gemini; no API key stored)
+- **Per-item passphrase lock** — hide an item's content behind a passphrase (a privacy gate, not encryption)
 - Markdown rendering for prompts and notes (GFM: tables, task lists, code blocks)
 - Automatic local backups, plus manual JSON export / import
 - Starter packs (Git, Docker, FFmpeg, macOS, SSH, AI Prompts, SQL Snippets) on first launch
@@ -110,7 +112,7 @@ Command execution always shows a confirmation dialog with the resolved command. 
 
 ## Roadmap
 
-- **v0.2** — AI integration (direct Claude / OpenAI calls for prompt items)
+- **v0.2** — AI integration (shipped: AI-assisted item drafting via local CLIs)
 - **v0.3** — iCloud / Syncthing sync
 - **v0.4** — Plugin system, imports from Raycast / Alfred, CLI companion
 
