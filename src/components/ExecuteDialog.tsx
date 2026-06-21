@@ -85,15 +85,15 @@ export function ExecuteDialog({
     ? [result.stdout, result.stderr].filter(Boolean).join("\n").trim()
     : "";
 
-  // A silent command that finished cleanly (or detached to the background)
-  // doesn't need the user to dismiss it — close shortly after "Done".
-  // Failures stay open so the error is readable.
+  // A silent command that finished cleanly with nothing to show (or
+  // detached to the background) closes immediately — no need to dismiss
+  // it. If it printed output, keep the dialog open so the user can read
+  // it; failures also stay open so the error is readable.
   useEffect(() => {
-    if (succeeded || detached) {
-      const t = setTimeout(() => onOpenChange(false), 1100);
-      return () => clearTimeout(t);
+    if (detached || (succeeded && !combinedOutput)) {
+      onOpenChange(false);
     }
-  }, [succeeded, detached, onOpenChange]);
+  }, [succeeded, detached, combinedOutput, onOpenChange]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
