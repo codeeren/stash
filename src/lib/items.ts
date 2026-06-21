@@ -209,8 +209,8 @@ export async function getItemWithRelations(
 export async function createItem(input: NewItem): Promise<Item> {
   const db = await getDb();
   const res = await db.execute(
-    `INSERT INTO items (type, title, content, language, description, category_id, is_favorite, silent)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+    `INSERT INTO items (type, title, content, language, description, category_id, is_favorite, silent, locked, lock_hash)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
     [
       input.type,
       input.title,
@@ -220,6 +220,8 @@ export async function createItem(input: NewItem): Promise<Item> {
       input.categoryId ?? null,
       boolToInt(input.isFavorite) ?? 0,
       boolToInt(input.silent) ?? 0,
+      boolToInt(input.locked) ?? 0,
+      input.lockHash ?? null,
     ],
   );
   const created = await getItem(res.lastInsertId as number);
@@ -248,6 +250,8 @@ export async function updateItem(
   if (patch.isFavorite !== undefined)
     set("is_favorite", boolToInt(patch.isFavorite));
   if (patch.silent !== undefined) set("silent", boolToInt(patch.silent));
+  if (patch.locked !== undefined) set("locked", boolToInt(patch.locked));
+  if (patch.lockHash !== undefined) set("lock_hash", patch.lockHash);
 
   if (fields.length === 0) {
     const existing = await getItem(id);
@@ -295,6 +299,8 @@ export async function duplicateItem(id: number): Promise<Item> {
     categoryId: full.categoryId ?? undefined,
     isFavorite: false,
     silent: full.silent,
+    locked: full.locked,
+    lockHash: full.lockHash,
   });
 
   if (full.tags.length > 0) {

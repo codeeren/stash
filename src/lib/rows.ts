@@ -17,6 +17,8 @@ export type ItemRow = {
   category_id: number | null;
   is_favorite: number;
   silent: number;
+  locked: number;
+  lock_hash: string | null;
   use_count: number;
   last_used_at: string | null;
   created_at: string;
@@ -60,6 +62,8 @@ export function rowToItem(r: ItemRow): Item {
     categoryId: r.category_id,
     isFavorite: Boolean(r.is_favorite),
     silent: Boolean(r.silent),
+    locked: Boolean(r.locked),
+    lockHash: r.lock_hash,
     useCount: r.use_count,
     lastUsedAt: r.last_used_at,
     createdAt: r.created_at,

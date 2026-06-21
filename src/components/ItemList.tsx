@@ -81,6 +81,11 @@ function ItemRow({ item, active, onClick }: ItemRowProps) {
           ) : null}
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0 mt-1">
+          {item.locked ? (
+            <span className="text-xs leading-none" aria-label="Locked" title="Locked">
+              🔒
+            </span>
+          ) : null}
           {item.isFavorite ? (
             <span
               className="h-1.5 w-1.5 rounded-full bg-amber-400/80"

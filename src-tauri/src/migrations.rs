@@ -20,6 +20,12 @@ pub fn migrations() -> Vec<Migration> {
             sql: ITEMS_SILENT,
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 4,
+            description: "items_lock",
+            sql: ITEMS_LOCK,
+            kind: MigrationKind::Up,
+        },
     ]
 }
 
@@ -27,6 +33,15 @@ pub fn migrations() -> Vec<Migration> {
 // (no Terminal window). Defaults to false to keep the existing safe path.
 const ITEMS_SILENT: &str = r#"
 ALTER TABLE items ADD COLUMN silent BOOLEAN DEFAULT 0;
+"#;
+
+// Per-item passphrase gate (privacy, not encryption): `locked` hides the
+// content behind an unlock prompt; `lock_hash` is the SHA-256 of the
+// passphrase so the passphrase itself isn't stored. The content stays
+// plaintext in the DB — this only keeps it out of casual view.
+const ITEMS_LOCK: &str = r#"
+ALTER TABLE items ADD COLUMN locked BOOLEAN DEFAULT 0;
+ALTER TABLE items ADD COLUMN lock_hash TEXT;
 "#;
 
 const SETTINGS_TABLE: &str = r#"

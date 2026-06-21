@@ -259,8 +259,12 @@ function App() {
         try {
           const full = await getItemWithRelations(id);
           if (!full) return;
+          // Locked items always need the window so the user can unlock —
+          // never silently copy their content from the tray.
           const copyOnly =
-            full.variables.length === 0 && full.type !== "command";
+            !full.locked &&
+            full.variables.length === 0 &&
+            full.type !== "command";
           if (copyOnly) {
             // Silent copy + a brief "✓ Copied" label next to the tray icon.
             await navigator.clipboard.writeText(full.content);

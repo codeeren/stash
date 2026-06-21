@@ -6,8 +6,10 @@ import { DragRegion } from "@/components/DragRegion";
 import { ExecuteDialog } from "@/components/ExecuteDialog";
 import { ItemEditor } from "@/components/ItemEditor";
 import { MarkdownView } from "@/components/MarkdownView";
+import { checkPassphrase } from "@/lib/lock";
 import { VariableFillDialog } from "@/components/VariableFillDialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useItemDetail } from "@/hooks/useItemDetail";
 import {
@@ -16,6 +18,7 @@ import {
   recordItemUse,
   toggleFavorite,
 } from "@/lib/items";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useUiStore } from "@/stores/uiStore";
 
 export function ItemDetail() {
@@ -33,6 +36,21 @@ export function ItemDetail() {
   const [executeOpen, setExecuteOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [rawMode, setRawMode] = useState(false);
+  // True while a run was launched from the menu bar (tray). When the
+  // resulting dialog closes, the main window hides back to the tray so
+  // Stash gets out of the way again.
+  const [trayRun, setTrayRun] = useState(false);
+  // Lock: an item is revealed only after the passphrase is entered, and
+  // re-locks whenever a different item is selected.
+  const [unlocked, setUnlocked] = useState(false);
+  const [unlockInput, setUnlockInput] = useState("");
+  const [unlockError, setUnlockError] = useState(false);
+
+  useEffect(() => {
+    setUnlocked(false);
+    setUnlockInput("");
+    setUnlockError(false);
+  }, [selectedItemId]);
 
   const lastSignalRef = useRef(0);
   useEffect(() => {
@@ -41,6 +59,9 @@ export function ItemDetail() {
     if (!item || item.id !== selectedItemId) return;
     if (editorOpen || deleteOpen || fillOpen || executeOpen) return;
     lastSignalRef.current = primaryActionSignal;
+
+    // A locked item can't be run/copied until it's unlocked in the panel.
+    if (item.locked && !unlocked) return;
 
     if (item.variables.length > 0) {
       setFillOpen(true);
@@ -66,6 +87,15 @@ export function ItemDetail() {
     bumpItems,
   ]);
 
+  // Once a tray-launched run's dialog has closed (success, or cancel),
+  // hide the window so Stash returns to the menu bar.
+  useEffect(() => {
+    if (trayRun && !fillOpen && !executeOpen) {
+      setTrayRun(false);
+      void getCurrentWindow().hide();
+    }
+  }, [trayRun, fillOpen, executeOpen]);
+
   // Handle tray activation: act once the pending item is loaded.
   useEffect(() => {
     if (pendingTrayItemId === null) return;
@@ -74,9 +104,15 @@ export function ItemDetail() {
 
     clearPendingTrayItem();
 
+    // Locked items just reveal the unlock panel (the window is already
+    // shown); they don't auto-run or copy.
+    if (item.locked && !unlocked) return;
+
     if (item.variables.length > 0) {
+      setTrayRun(true);
       setFillOpen(true);
     } else if (item.type === "command") {
+      setTrayRun(true);
       setExecuteOpen(true);
     } else {
       void (async () => {
@@ -144,6 +180,17 @@ export function ItemDetail() {
 
   const hasVariables = item.variables.length > 0;
   const isCommand = item.type === "command";
+  const isLocked = item.locked && !unlocked;
+
+  const tryUnlock = async () => {
+    if (await checkPassphrase(unlockInput, item.lockHash)) {
+      setUnlocked(true);
+      setUnlockInput("");
+      setUnlockError(false);
+    } else {
+      setUnlockError(true);
+    }
+  };
 
   const onCopy = async () => {
     await navigator.clipboard.writeText(item.content);
@@ -201,6 +248,11 @@ export function ItemDetail() {
               </p>
             ) : null}
           </div>
+          {isLocked ? (
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
+              🔒 Locked
+            </span>
+          ) : (
           <div className="flex items-center gap-1 flex-wrap justify-end">
             {hasVariables ? (
               <>
@@ -294,10 +346,46 @@ export function ItemDetail() {
               </svg>
             </Button>
           </div>
+          )}
         </div>
       </header>
 
       <div className="px-6 py-4 space-y-4 flex-1">
+        {isLocked ? (
+          <div className="max-w-sm mx-auto mt-10 space-y-3 text-center">
+            <div className="text-3xl">🔒</div>
+            <div className="text-sm font-medium">This item is locked</div>
+            <div className="text-xs text-muted-foreground">
+              Enter the passphrase to view its content.
+            </div>
+            <Input
+              type="password"
+              autoFocus
+              value={unlockInput}
+              onChange={(e) => {
+                setUnlockInput(e.currentTarget.value);
+                setUnlockError(false);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void tryUnlock();
+              }}
+              placeholder="Passphrase"
+            />
+            {unlockError ? (
+              <div className="text-xs text-destructive">
+                Wrong passphrase.
+              </div>
+            ) : null}
+            <Button
+              className="w-full"
+              onClick={() => void tryUnlock()}
+              disabled={!unlockInput}
+            >
+              Unlock
+            </Button>
+          </div>
+        ) : (
+        <>
         {(() => {
           const canRender = item.type === "prompt" || item.type === "note";
           const showRendered = canRender && !rawMode;
@@ -388,6 +476,8 @@ export function ItemDetail() {
           <dt>Use count</dt>
           <dd>{item.useCount}</dd>
         </dl>
+        </>
+        )}
       </div>
 
       <ItemEditor

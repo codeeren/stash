@@ -19,6 +19,10 @@ export type Item = {
   // Commands only: when true, run silently in the background instead of
   // opening Terminal. Opt-in per item.
   silent: boolean;
+  // Privacy gate (not encryption): when true, the content is hidden
+  // behind a passphrase prompt. lockHash is SHA-256 of the passphrase.
+  locked: boolean;
+  lockHash: string | null;
   useCount: number;
   lastUsedAt: string | null;
   createdAt: string;
@@ -34,6 +38,8 @@ export type NewItem = {
   categoryId?: number | null;
   isFavorite?: boolean;
   silent?: boolean;
+  locked?: boolean;
+  lockHash?: string | null;
 };
 
 export type ItemUpdate = Partial<
@@ -47,6 +53,8 @@ export type ItemUpdate = Partial<
     | "categoryId"
     | "isFavorite"
     | "silent"
+    | "locked"
+    | "lockHash"
   >
 >;
 

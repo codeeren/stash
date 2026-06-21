@@ -135,8 +135,9 @@ async function doImport(
     await db.execute(
       `INSERT INTO items
          (id, type, title, content, language, description, category_id,
-          is_favorite, use_count, last_used_at, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+          is_favorite, silent, locked, lock_hash, use_count, last_used_at,
+          created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
       [
         i.id,
         i.type,
@@ -146,6 +147,9 @@ async function doImport(
         i.description,
         i.category_id,
         i.is_favorite,
+        i.silent ?? 0,
+        i.locked ?? 0,
+        i.lock_hash ?? null,
         i.use_count,
         i.last_used_at,
         i.created_at,

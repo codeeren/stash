@@ -21,6 +21,7 @@ import {
 import { useCategories } from "@/hooks/useCategories";
 import { useTags } from "@/hooks/useTags";
 import { generateItem } from "@/lib/ai";
+import { hashPassphrase } from "@/lib/lock";
 import { createItem, updateItem } from "@/lib/items";
 import { setItemTags } from "@/lib/tags";
 import { extractVariableNames, setItemVariables } from "@/lib/variables";
@@ -69,6 +70,10 @@ type FormState = {
   categoryId: string;
   isFavorite: boolean;
   silent: boolean;
+  locked: boolean;
+  // New passphrase typed in this session; blank keeps the existing one
+  // when editing an already-locked item.
+  lockPassphrase: string;
   tagsInput: string;
 };
 
@@ -81,6 +86,8 @@ const EMPTY: FormState = {
   categoryId: NO_CATEGORY,
   isFavorite: false,
   silent: false,
+  locked: false,
+  lockPassphrase: "",
   tagsInput: "",
 };
 
@@ -95,6 +102,8 @@ function toFormState(item: ItemWithRelations): FormState {
       item.categoryId !== null ? String(item.categoryId) : NO_CATEGORY,
     isFavorite: item.isFavorite,
     silent: item.silent,
+    locked: item.locked,
+    lockPassphrase: "",
     tagsInput: item.tags.map((t) => t.name).join(", "),
   };
 }
@@ -225,11 +234,27 @@ export function ItemEditor({
       return;
     }
 
+    // Lock: need either a new passphrase or an existing one to keep.
+    if (form.locked && !form.lockPassphrase && !existing?.lockHash) {
+      setError("Set a passphrase to lock this item.");
+      return;
+    }
+
     setSaving(true);
     setError(null);
     try {
       const categoryId =
         form.categoryId === NO_CATEGORY ? null : Number(form.categoryId);
+
+      // Resolve the lock hash: new passphrase → hash it; locked with no new
+      // passphrase → keep the existing hash; unlocked → null.
+      let lockHash: string | null = null;
+      if (form.locked) {
+        lockHash = form.lockPassphrase
+          ? await hashPassphrase(form.lockPassphrase)
+          : (existing?.lockHash ?? null);
+      }
+
       const payload = {
         type: form.type,
         title: form.title.trim(),
@@ -241,6 +266,8 @@ export function ItemEditor({
         // Only commands run; the silent flag is meaningless for other
         // types, so always store false for them.
         silent: form.type === "command" ? form.silent : false,
+        locked: form.locked,
+        lockHash,
       };
 
       let saved: Item;
@@ -660,6 +687,40 @@ export function ItemEditor({
               </span>
             </label>
           ) : null}
+
+          <div className="space-y-2">
+            <label className="flex items-start gap-2 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.locked}
+                onChange={(e) => update("locked", e.currentTarget.checked)}
+                className="h-4 w-4 mt-0.5 rounded border-input"
+              />
+              <span className="space-y-0.5">
+                <span className="block">Lock with a passphrase</span>
+                <span className="block text-xs text-muted-foreground">
+                  Hides the content behind a passphrase prompt. This keeps
+                  it out of casual view — it is not encryption, so don't
+                  rely on it for truly sensitive secrets.
+                </span>
+              </span>
+            </label>
+            {form.locked ? (
+              <Input
+                type="password"
+                value={form.lockPassphrase}
+                onChange={(e) =>
+                  update("lockPassphrase", e.currentTarget.value)
+                }
+                placeholder={
+                  existing?.lockHash
+                    ? "Enter a new passphrase to change it (blank = keep)"
+                    : "Choose a passphrase"
+                }
+                className="ml-6 w-[calc(100%-1.5rem)]"
+              />
+            ) : null}
+          </div>
 
           {error ? (
             <div className="text-sm text-destructive">{error}</div>
