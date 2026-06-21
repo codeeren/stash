@@ -297,7 +297,7 @@ export function ItemEditor({
           <DialogTitle>{existing ? "Edit item" : "New item"}</DialogTitle>
         </DialogHeader>
 
-        {aiEnabled && !existing ? (
+        {aiEnabled ? (
           <div className="rounded-md border bg-muted/40 p-2.5 space-y-2">
             <div className="flex items-center gap-2">
               <span className="text-sm">✨</span>
