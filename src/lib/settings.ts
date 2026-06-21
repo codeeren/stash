@@ -9,7 +9,9 @@ export type SettingKey =
   | "tray.sort"
   | "items.sort"
   | "backup.auto"
-  | "backup.lastAutoAt";
+  | "backup.lastAutoAt"
+  | "ai.provider"
+  | "ai.binPath";
 
 export type ThemeValue = "light" | "dark" | "system";
 
@@ -31,6 +33,11 @@ export const DEFAULT_SETTINGS: Record<SettingKey, string> = {
   // Automatic local JSON backup: a single file, overwritten on schedule.
   "backup.auto": "weekly",
   "backup.lastAutoAt": "",
+  // AI assist: which detected CLI to shell out to, and its resolved path.
+  // Empty provider = AI off (the default; the user opts in by picking a
+  // detected CLI in Settings → AI).
+  "ai.provider": "",
+  "ai.binPath": "",
 };
 
 type SettingRow = { key: string; value: string };

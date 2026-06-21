@@ -1,3 +1,4 @@
+mod ai;
 mod backup;
 mod menu;
 mod migrations;
@@ -24,6 +25,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             shell::execute_command,
             shell::execute_command_silent,
+            ai::ai_detect,
+            ai::ai_generate,
             shortcut::set_global_shortcut,
             backup::write_auto_backup,
             backup::reveal_backups_folder,

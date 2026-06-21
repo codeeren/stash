@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { ShortcutInput } from "@/components/ShortcutInput";
+import { type DetectedCli, detectClis } from "@/lib/ai";
 import {
   type Backup,
   downloadBackupFile,
@@ -36,11 +37,12 @@ type SettingsDialogProps = {
 
 type Draft = Record<SettingKey, string>;
 
-type SettingsTab = "shortcuts" | "appearance" | "backup" | "about";
+type SettingsTab = "shortcuts" | "appearance" | "ai" | "backup" | "about";
 
 const SETTINGS_TABS: { id: SettingsTab; label: string }[] = [
   { id: "shortcuts", label: "Shortcuts" },
   { id: "appearance", label: "Appearance" },
+  { id: "ai", label: "AI" },
   { id: "backup", label: "Backup" },
   { id: "about", label: "About" },
 ];
@@ -66,6 +68,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const [pending, setPending] = useState<PendingImport | null>(null);
   const [appVersion, setAppVersion] = useState<string | null>(null);
   const [tab, setTab] = useState<SettingsTab>("shortcuts");
+  const [clis, setClis] = useState<DetectedCli[] | null>(null);
+  const [detecting, setDetecting] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   // Snapshot of settings when the dialog opened, used to revert on Cancel.
@@ -100,6 +104,25 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   };
 
   const reset = (key: SettingKey) => update(key, DEFAULT_SETTINGS[key]);
+
+  // Detect installed AI CLIs the first time the AI tab is shown.
+  const runDetect = async () => {
+    setDetecting(true);
+    try {
+      setClis(await detectClis());
+    } catch {
+      setClis([]);
+    } finally {
+      setDetecting(false);
+    }
+  };
+
+  useEffect(() => {
+    if (tab === "ai" && clis === null && !detecting) {
+      void runDetect();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
 
   // Save just closes — everything is already applied. Cancel restores the
   // settings to the snapshot taken when the dialog opened.
@@ -351,6 +374,95 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                     </div>
                   </div>
                 ) : null}
+              </>
+            ) : null}
+
+            {tab === "ai" ? (
+              <>
+                <div className="space-y-1">
+                  <Label>AI assist</Label>
+                  <p className="text-xs text-muted-foreground">
+                    When set up, the item editor can draft an item from a
+                    plain-language request. Stash shells out to an AI CLI
+                    you've already installed and signed in to — no API key
+                    is stored in Stash. Off until you pick one below.
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label>Provider</Label>
+                    <button
+                      type="button"
+                      onClick={() => void runDetect()}
+                      disabled={detecting}
+                      className="text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      {detecting ? "Detecting…" : "Re-scan"}
+                    </button>
+                  </div>
+
+                  <label className="flex items-center gap-2 px-2.5 py-2 rounded-md border cursor-pointer text-sm">
+                    <input
+                      type="radio"
+                      name="ai-provider"
+                      checked={draft["ai.provider"] === ""}
+                      onChange={() => {
+                        update("ai.provider", "");
+                        update("ai.binPath", "");
+                      }}
+                    />
+                    <span>Off</span>
+                  </label>
+
+                  {(clis ?? []).map((c) => (
+                    <label
+                      key={c.id}
+                      className={cn(
+                        "flex items-start gap-2 px-2.5 py-2 rounded-md border text-sm",
+                        c.found
+                          ? "cursor-pointer"
+                          : "opacity-60 cursor-not-allowed",
+                      )}
+                    >
+                      <input
+                        type="radio"
+                        name="ai-provider"
+                        className="mt-0.5"
+                        disabled={!c.found}
+                        checked={draft["ai.provider"] === c.id}
+                        onChange={() => {
+                          update("ai.provider", c.id);
+                          update("ai.binPath", c.path);
+                        }}
+                      />
+                      <span className="space-y-0.5">
+                        <span className="flex items-center gap-2">
+                          <span>{c.name}</span>
+                          {c.found ? (
+                            <span className="text-xs text-emerald-600 dark:text-emerald-400">
+                              ✓ found
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">
+                              not installed
+                            </span>
+                          )}
+                        </span>
+                        <span className="block text-xs text-muted-foreground font-mono break-all">
+                          {c.found ? c.path : `Install: ${c.install_hint}`}
+                        </span>
+                      </span>
+                    </label>
+                  ))}
+
+                  {clis !== null && clis.every((c) => !c.found) ? (
+                    <p className="text-xs text-muted-foreground pt-1">
+                      No AI CLI found. Install one of the above (each is a
+                      one-time `npm i -g …`), then click Re-scan.
+                    </p>
+                  ) : null}
+                </div>
               </>
             ) : null}
 

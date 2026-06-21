@@ -20,9 +20,11 @@ import {
 } from "@/components/ui/select";
 import { useCategories } from "@/hooks/useCategories";
 import { useTags } from "@/hooks/useTags";
+import { generateItem } from "@/lib/ai";
 import { createItem, updateItem } from "@/lib/items";
 import { setItemTags } from "@/lib/tags";
 import { extractVariableNames, setItemVariables } from "@/lib/variables";
+import { useSettingsStore } from "@/stores/settingsStore";
 import { useUiStore } from "@/stores/uiStore";
 import type {
   Item,
@@ -124,18 +126,52 @@ export function ItemEditor({
   const bumpTags = useUiStore((s) => s.bumpTags);
   const setSelectedItemId = useUiStore((s) => s.setSelectedItemId);
 
+  const aiProvider = useSettingsStore((s) => s.values["ai.provider"]);
+  const aiBinPath = useSettingsStore((s) => s.values["ai.binPath"]);
+  const aiEnabled = Boolean(aiProvider && aiBinPath);
+
   const [form, setForm] = useState<FormState>(EMPTY);
   const [varConfigs, setVarConfigs] = useState<Record<string, VarConfig>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [aiRequest, setAiRequest] = useState("");
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
       setForm(existing ? toFormState(existing) : EMPTY);
       setVarConfigs(existing ? toVarConfigs(existing) : {});
       setError(null);
+      setAiRequest("");
+      setAiError(null);
+      setAiBusy(false);
     }
   }, [open, existing]);
+
+  // Ask the configured CLI to draft an item from a natural-language
+  // request, then fill the form with what it returns. The user reviews
+  // and edits before saving — nothing runs automatically.
+  const runAiGenerate = async () => {
+    if (!aiRequest.trim() || aiBusy) return;
+    setAiBusy(true);
+    setAiError(null);
+    try {
+      const gen = await generateItem(aiProvider, aiBinPath, aiRequest.trim());
+      setForm((f) => ({
+        ...f,
+        type: gen.type,
+        title: gen.title || f.title,
+        content: gen.content || f.content,
+        description: gen.description || f.description,
+        tagsInput: gen.tags.length > 0 ? gen.tags.join(", ") : f.tagsInput,
+      }));
+    } catch (e) {
+      setAiError(String(e instanceof Error ? e.message : e));
+    } finally {
+      setAiBusy(false);
+    }
+  };
 
   const detectedVariables = useMemo(
     () => extractVariableNames(form.content),
@@ -260,6 +296,41 @@ export function ItemEditor({
         <DialogHeader>
           <DialogTitle>{existing ? "Edit item" : "New item"}</DialogTitle>
         </DialogHeader>
+
+        {aiEnabled && !existing ? (
+          <div className="rounded-md border bg-muted/40 p-2.5 space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-sm">✨</span>
+              <input
+                value={aiRequest}
+                onChange={(e) => setAiRequest(e.currentTarget.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    void runAiGenerate();
+                  }
+                }}
+                disabled={aiBusy}
+                placeholder="Describe what you want — e.g. “command to compress a folder to tar.gz”"
+                className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground disabled:opacity-60"
+              />
+              <Button
+                size="sm"
+                onClick={() => void runAiGenerate()}
+                disabled={aiBusy || !aiRequest.trim()}
+              >
+                {aiBusy ? "Thinking…" : "Generate"}
+              </Button>
+            </div>
+            {aiError ? (
+              <div className="text-xs text-destructive">{aiError}</div>
+            ) : (
+              <div className="text-xs text-muted-foreground">
+                AI drafts the fields below; review and edit before saving.
+              </div>
+            )}
+          </div>
+        ) : null}
 
         <div className="space-y-4 py-2">
           <div className="grid grid-cols-[1fr_10rem] gap-3">
