@@ -40,3 +40,38 @@ if [ -n "$DMG" ]; then
   rm -rf "$STAGING"
   echo "postbuild: repacked $DMG (Carbon stripped + Applications shortcut)"
 fi
+
+# --- Auto-updater artifacts ------------------------------------------------
+# The .app.tar.gz that `tauri build` produced was made BEFORE we stripped
+# the Carbon flag and re-signed, so it's stale. Re-tar the patched app and
+# re-sign the tarball with the updater key, then write the latest.json
+# manifest the in-app updater reads from the GitHub release.
+KEY="$HOME/.tauri/stash-updater.key"
+MACOS_DIR="src-tauri/target/release/bundle/macos"
+VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" \
+  "$APP/Contents/Info.plist")
+
+if [ -f "$KEY" ]; then
+  TARBALL="$MACOS_DIR/Stash.app.tar.gz"
+  ( cd "$MACOS_DIR" && rm -f Stash.app.tar.gz Stash.app.tar.gz.sig \
+      && tar -czf Stash.app.tar.gz Stash.app )
+  TAURI_SIGNING_PRIVATE_KEY_PASSWORD="" \
+    npx tauri signer sign -f "$KEY" -p "" "$TARBALL" >/dev/null
+  SIG=$(cat "$TARBALL.sig")
+
+  cat > "$MACOS_DIR/latest.json" <<JSON
+{
+  "version": "$VERSION",
+  "pub_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+  "platforms": {
+    "darwin-aarch64": {
+      "signature": "$SIG",
+      "url": "https://github.com/codeeren/stash/releases/download/v$VERSION/Stash.app.tar.gz"
+    }
+  }
+}
+JSON
+  echo "postbuild: wrote updater artifacts (Stash.app.tar.gz + latest.json) for v$VERSION"
+else
+  echo "postbuild: updater key not found at $KEY — skipping updater artifacts"
+fi

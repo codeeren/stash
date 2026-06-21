@@ -4,6 +4,16 @@ All notable changes to Stash will be documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+## [0.2.1] — 2026-06-21
+
+### Added
+
+- **In-app updates.** Stash can now update itself: Settings → About →
+  Check for updates downloads and installs the latest release from
+  GitHub and restarts, no manual re-download. Updates are signed and
+  verified. (This is the first updater-capable build, so it must be
+  installed manually once; future versions update in place.)
+
 ## [0.2.0] — 2026-06-21
 
 The AI milestone.

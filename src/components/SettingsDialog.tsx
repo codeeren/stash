@@ -26,6 +26,11 @@ import {
   type SortValue,
   type ThemeValue,
 } from "@/lib/settings";
+import {
+  type UpdateState,
+  checkForUpdate,
+  installUpdate,
+} from "@/lib/updater";
 import { cn } from "@/lib/utils";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useUiStore } from "@/stores/uiStore";
@@ -70,8 +75,42 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const [tab, setTab] = useState<SettingsTab>("shortcuts");
   const [clis, setClis] = useState<DetectedCli[] | null>(null);
   const [detecting, setDetecting] = useState(false);
+  const [updateState, setUpdateState] = useState<UpdateState>({ kind: "idle" });
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  // Holds the pending update object between checking and installing.
+  const pendingUpdateRef = useRef<Awaited<
+    ReturnType<typeof checkForUpdate>
+  > | null>(null);
+
+  const onCheckUpdate = async () => {
+    setUpdateState({ kind: "checking" });
+    try {
+      const u = await checkForUpdate();
+      if (u) {
+        pendingUpdateRef.current = u;
+        setUpdateState({ kind: "available", version: u.version, notes: u.body });
+      } else {
+        setUpdateState({ kind: "none" });
+      }
+    } catch (e) {
+      setUpdateState({ kind: "error", message: String(e) });
+    }
+  };
+
+  const onInstallUpdate = async () => {
+    const u = pendingUpdateRef.current;
+    if (!u) return;
+    setUpdateState({ kind: "downloading", percent: 0 });
+    try {
+      await installUpdate(u, (percent) =>
+        setUpdateState({ kind: "downloading", percent }),
+      );
+      setUpdateState({ kind: "ready" });
+    } catch (e) {
+      setUpdateState({ kind: "error", message: String(e) });
+    }
+  };
   // Snapshot of settings when the dialog opened, used to revert on Cancel.
   const originalRef = useRef<Draft>(values);
 
@@ -581,16 +620,61 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             ) : null}
 
             {tab === "about" ? (
-              <div className="space-y-2">
-                <div className="text-sm font-medium">Stash</div>
-                <div className="text-xs text-muted-foreground">
-                  Version {appVersion ?? "—"}
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <div className="text-sm font-medium">Stash</div>
+                  <div className="text-xs text-muted-foreground">
+                    Version {appVersion ?? "—"}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    A native macOS hub for the commands, prompts, and
+                    snippets you keep forgetting. Local-first. Source
+                    available under the PolyForm Noncommercial 1.0.0
+                    license.
+                  </div>
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  A native macOS hub for the commands, prompts, and
-                  snippets you keep forgetting. Local-first. Source
-                  available under the PolyForm Noncommercial 1.0.0
-                  license.
+
+                <div className="space-y-2 border-t pt-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm">Software update</span>
+                    {updateState.kind === "available" ? (
+                      <Button size="sm" onClick={() => void onInstallUpdate()}>
+                        Update to {updateState.version}
+                      </Button>
+                    ) : updateState.kind === "downloading" ? (
+                      <span className="text-xs text-muted-foreground">
+                        Downloading… {updateState.percent}%
+                      </span>
+                    ) : updateState.kind === "ready" ? (
+                      <span className="text-xs text-muted-foreground">
+                        Restarting…
+                      </span>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => void onCheckUpdate()}
+                        disabled={updateState.kind === "checking"}
+                      >
+                        {updateState.kind === "checking"
+                          ? "Checking…"
+                          : "Check for updates"}
+                      </Button>
+                    )}
+                  </div>
+                  {updateState.kind === "none" ? (
+                    <div className="text-xs text-muted-foreground">
+                      You're on the latest version.
+                    </div>
+                  ) : updateState.kind === "error" ? (
+                    <div className="text-xs text-destructive break-words">
+                      {updateState.message}
+                    </div>
+                  ) : updateState.kind === "available" && updateState.notes ? (
+                    <div className="text-xs text-muted-foreground whitespace-pre-wrap break-words max-h-24 overflow-y-auto">
+                      {updateState.notes}
+                    </div>
+                  ) : null}
                 </div>
               </div>
             ) : null}
