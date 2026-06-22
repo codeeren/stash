@@ -110,12 +110,19 @@ fn build_command(provider: &str, bin_path: &str, prompt: &str) -> Command {
     let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".into());
     let inner = match provider {
         "claude" => r#"exec "$1" -p "$2""#,
-        "codex" => r#"exec "$1" exec "$2""#,
+        // Codex's `exec` refuses to run outside a trusted git repo unless
+        // told to skip that check; we just want a one-shot completion.
+        "codex" => r#"exec "$1" exec --skip-git-repo-check "$2""#,
         "gemini" => r#"exec "$1" -p "$2""#,
         _ => r#"exec "$1" "$2""#,
     };
     let mut cmd = Command::new(shell);
     cmd.args(["-lc", inner, "stash-ai", bin_path, prompt])
+        // Run from the user's home so CLIs that inspect the working
+        // directory (git repo / trust checks) get a sane neutral one.
+        .current_dir(std::env::var("HOME").unwrap_or_else(|_| "/".into()))
+        // No interactive stdin — the prompt is passed as an argument.
+        .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     cmd

@@ -4,6 +4,15 @@ All notable changes to Stash will be documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+## [0.2.4] — 2026-06-22
+
+### Fixed
+
+- AI generation now works with the Codex CLI. Codex's `exec` refused to
+  run outside a trusted git repo; Stash now passes
+  `--skip-git-repo-check`, runs the CLI from the home directory, and
+  closes stdin so it doesn't wait for input.
+
 ## [0.2.3] — 2026-06-22
 
 ### Fixed
