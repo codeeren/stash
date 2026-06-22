@@ -53,8 +53,11 @@ VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" \
 
 if [ -f "$KEY" ]; then
   TARBALL="$MACOS_DIR/Stash.app.tar.gz"
+  # COPYFILE_DISABLE stops BSD tar from emitting AppleDouble `._*` metadata
+  # entries (the .app carries xattrs from code-signing); those entries make
+  # the updater's unpack fail with "failed to unpack `._Stash.app`".
   ( cd "$MACOS_DIR" && rm -f Stash.app.tar.gz Stash.app.tar.gz.sig \
-      && tar -czf Stash.app.tar.gz Stash.app )
+      && COPYFILE_DISABLE=1 tar -czf Stash.app.tar.gz Stash.app )
   TAURI_SIGNING_PRIVATE_KEY_PASSWORD="" \
     npx tauri signer sign -f "$KEY" -p "" "$TARBALL" >/dev/null
   SIG=$(cat "$TARBALL.sig")
