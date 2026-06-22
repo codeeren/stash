@@ -38,6 +38,7 @@ Stash stores, organizes, and runs the terminal commands, AI prompts, and code sn
 - **AI-assisted item creation** — describe what you want and Stash drafts the item (via an AI CLI you already have: Claude Code, Codex, or Gemini; no API key stored)
 - **Per-item passphrase lock** — hide an item's content behind a passphrase (a privacy gate, not encryption)
 - Markdown rendering for prompts and notes (GFM: tables, task lists, code blocks)
+- **In-app updates** — Settings → About → Check for updates pulls and installs the latest signed release from GitHub
 - Automatic local backups, plus manual JSON export / import
 - Starter packs (Git, Docker, FFmpeg, macOS, SSH, AI Prompts, SQL Snippets) on first launch
 - Light / Dark / System theme
