@@ -4,6 +4,13 @@ All notable changes to Stash will be documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+## [0.2.2] — 2026-06-21
+
+### Changed
+
+- First release delivered through the new in-app updater, end-to-end.
+  No functional changes from 0.2.1.
+
 ## [0.2.1] — 2026-06-21
 
 ### Added
