@@ -4,6 +4,15 @@ All notable changes to Stash will be documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+## [0.2.3] — 2026-06-22
+
+### Fixed
+
+- AI-assisted generation no longer fails with "env: node: No such file
+  or directory". The AI CLI (a Node script) is now run through the
+  user's login shell so Node is on PATH — the minimal PATH a GUI app
+  inherits from /Applications was the cause.
+
 ## [0.2.2] — 2026-06-21
 
 ### Changed

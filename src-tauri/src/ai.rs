@@ -99,26 +99,25 @@ pub fn ai_detect() -> Vec<DetectedCli> {
         .collect()
 }
 
-// Headless invocation per provider. The prompt is passed as a single argv
-// argument (no shell), so it needs no escaping and there's no injection
-// surface. Each CLI prints the model's reply to stdout.
+// Headless invocation per provider, run *through the user's login shell*.
+// A GUI app launched from /Applications has a minimal PATH, but these CLIs
+// are Node scripts whose `#!/usr/bin/env node` shebang needs Node on PATH;
+// the login shell restores the user's real PATH. The binary path and the
+// prompt are passed as positional parameters ($1, $2), so the prompt needs
+// no escaping and there's no shell-injection surface. Each CLI prints the
+// model's reply to stdout.
 fn build_command(provider: &str, bin_path: &str, prompt: &str) -> Command {
-    let mut cmd = Command::new(bin_path);
-    match provider {
-        "claude" => {
-            cmd.arg("-p").arg(prompt);
-        }
-        "codex" => {
-            cmd.arg("exec").arg(prompt);
-        }
-        "gemini" => {
-            cmd.arg("-p").arg(prompt);
-        }
-        _ => {
-            cmd.arg(prompt);
-        }
-    }
-    cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
+    let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".into());
+    let inner = match provider {
+        "claude" => r#"exec "$1" -p "$2""#,
+        "codex" => r#"exec "$1" exec "$2""#,
+        "gemini" => r#"exec "$1" -p "$2""#,
+        _ => r#"exec "$1" "$2""#,
+    };
+    let mut cmd = Command::new(shell);
+    cmd.args(["-lc", inner, "stash-ai", bin_path, prompt])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
     cmd
 }
 
