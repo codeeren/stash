@@ -459,7 +459,18 @@ export function ItemEditor({
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="content">Content</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="content">Content</Label>
+              <button
+                type="button"
+                onClick={insertVariable}
+                title="Insert a {{variable}} placeholder at the cursor"
+                className="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-2.5 py-1 text-xs font-medium text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+              >
+                <span className="font-mono">{"{ }"}</span>
+                <span>Insert variable</span>
+              </button>
+            </div>
             <Textarea
               id="content"
               ref={contentRef}
@@ -468,15 +479,6 @@ export function ItemEditor({
               placeholder="The command, prompt, or snippet. Use {{name}} for variables."
               className="font-mono text-xs min-h-[10rem]"
             />
-            <button
-              type="button"
-              onClick={insertVariable}
-              title="Insert a {{variable}} placeholder at the cursor"
-              className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 w-fit"
-            >
-              <span className="font-mono">{"{ }"}</span>
-              <span>Insert variable</span>
-            </button>
             {detectedVariables.length > 0 ? (
               <div className="text-xs text-muted-foreground">
                 Detected variables:{" "}

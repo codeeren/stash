@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { emit } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
@@ -6,6 +7,7 @@ import {
   CornerDownLeftIcon,
   FileTextIcon,
   MessageSquareIcon,
+  PlusIcon,
   SearchIcon,
   TerminalIcon,
 } from "lucide-react";
@@ -111,7 +113,20 @@ export function QuickLaunch() {
     [hide],
   );
 
+  // Open the main window and pop the New Item editor. The main window
+  // already listens for `menu:new_item` and opens the editor.
+  const createNew = useCallback(() => {
+    void invoke("show_main_window").catch(() => {});
+    void emit("menu:new_item");
+    hide();
+  }, [hide]);
+
   const onKeyDown = (e: React.KeyboardEvent) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === "n") {
+      e.preventDefault();
+      createNew();
+      return;
+    }
     if (e.key === "Escape") {
       e.preventDefault();
       hide();
@@ -179,6 +194,19 @@ export function QuickLaunch() {
               );
             })
           )}
+        </div>
+
+        <div className="border-t px-2 py-1.5">
+          <button
+            onClick={createNew}
+            className="w-full text-left px-2 py-1.5 rounded-md flex items-center gap-2.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
+          >
+            <PlusIcon className="h-4 w-4 flex-shrink-0" />
+            <span className="flex-1">New item…</span>
+            <kbd className="text-[10px] font-medium text-muted-foreground border rounded px-1.5 py-0.5">
+              ⌘N
+            </kbd>
+          </button>
         </div>
       </div>
     </div>
