@@ -4,6 +4,18 @@ All notable changes to Stash will be documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+## [0.2.5] — 2026-07-19
+
+### Added
+
+- Quick-launch window now has a "New item…" action (and a ⌘N shortcut)
+  that opens the main window straight into the new-item editor.
+
+### Changed
+
+- The "Insert variable" action in the item editor is now a clearly
+  visible button in the Content header instead of a faint text link.
+
 ## [0.2.4] — 2026-06-22
 
 ### Fixed
