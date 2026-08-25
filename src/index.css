@@ -111,3 +111,19 @@
     background: transparent;
   }
 }
+
+/* Toast: rises into place, then holds. Dismissal is handled in JS. */
+@keyframes stash-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.stash-toast {
+  animation: stash-toast-in 140ms ease-out;
+}

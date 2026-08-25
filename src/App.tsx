@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { CommandPalette } from "@/components/CommandPalette";
+import { RunResultDialog } from "@/components/RunResultDialog";
+import { Toast } from "@/components/Toast";
 import { ItemDetail } from "@/components/ItemDetail";
 import { ItemList } from "@/components/ItemList";
 import { SettingsDialog } from "@/components/SettingsDialog";
@@ -15,6 +17,7 @@ import {
 } from "@/lib/items";
 import { exportBackup } from "@/lib/backup";
 import { STARTER_PACKS, seedPacks } from "@/lib/seed";
+import { runItemSilently } from "@/lib/silentRun";
 import { matches, toAccelerator } from "@/lib/shortcuts";
 import type { SortValue, ThemeValue } from "@/lib/settings";
 import { applyTheme } from "@/lib/theme";
@@ -265,7 +268,17 @@ function App() {
             !full.locked &&
             full.variables.length === 0 &&
             full.type !== "command";
-          if (copyOnly) {
+          // A silent command asks nothing, so the window never has to
+          // appear: run it straight from the menu bar and flash the result
+          // next to the tray icon.
+          const silentRun =
+            !full.locked &&
+            full.variables.length === 0 &&
+            full.type === "command" &&
+            full.silent;
+          if (silentRun) {
+            await runItemSilently(full.id, full.content, { fromTray: true });
+          } else if (copyOnly) {
             // Silent copy + a brief "✓ Copied" label next to the tray icon.
             await navigator.clipboard.writeText(full.content);
             await recordItemUse(full.id);
@@ -327,6 +340,8 @@ function App() {
       <EmptyDatabaseOverlay />
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
       <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+      <RunResultDialog />
+      <Toast />
     </div>
   );
 }

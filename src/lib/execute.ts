@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { getDb } from "@/lib/db";
 
-type SilentResult = {
+export type SilentResult = {
   exitCode: number | null;
   stdout: string;
   stderr: string;

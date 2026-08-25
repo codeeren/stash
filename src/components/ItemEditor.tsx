@@ -21,6 +21,7 @@ import {
 import { useCategories } from "@/hooks/useCategories";
 import { useTags } from "@/hooks/useTags";
 import { generateItem } from "@/lib/ai";
+import { detectDanger } from "@/lib/danger";
 import { hashPassphrase } from "@/lib/lock";
 import { createItem, updateItem } from "@/lib/items";
 import { setItemTags } from "@/lib/tags";
@@ -185,6 +186,16 @@ export function ItemEditor({
   const detectedVariables = useMemo(
     () => extractVariableNames(form.content),
     [form.content],
+  );
+
+  // Silent commands bypass the pre-flight dialog, so the danger scan runs
+  // here instead — while the user can still change their mind.
+  const silentWarnings = useMemo(
+    () =>
+      form.type === "command" && form.silent
+        ? detectDanger(form.content)
+        : [],
+    [form.type, form.silent, form.content],
   );
 
   const contentRef = useRef<HTMLTextAreaElement>(null);
@@ -672,22 +683,48 @@ export function ItemEditor({
           </label>
 
           {form.type === "command" ? (
-            <label className="flex items-start gap-2 text-sm cursor-pointer">
-              <input
-                type="checkbox"
-                checked={form.silent}
-                onChange={(e) => update("silent", e.currentTarget.checked)}
-                className="h-4 w-4 mt-0.5 rounded border-input"
-              />
-              <span className="space-y-0.5">
-                <span className="block">Run silently in the background</span>
-                <span className="block text-xs text-muted-foreground">
-                  No Terminal window. Best for short commands with little or
-                  no output (e.g. lock screen, flush DNS). The confirmation
-                  dialog still appears before each run.
+            <div className="space-y-2">
+              <label className="flex items-start gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.silent}
+                  onChange={(e) => update("silent", e.currentTarget.checked)}
+                  className="h-4 w-4 mt-0.5 rounded border-input"
+                />
+                <span className="space-y-0.5">
+                  <span className="block">Run silently in the background</span>
+                  <span className="block text-xs text-muted-foreground">
+                    No Terminal window and no confirmation — one keystroke
+                    and it's running. Best for short commands with little or
+                    no output (e.g. lock screen, flush DNS).
+                  </span>
                 </span>
-              </span>
-            </label>
+              </label>
+              {/* The confirmation dialog is the safety net for every other
+                  command; silent items trade it away, so the warning has to
+                  land here, at the moment the user opts in. */}
+              {form.silent ? (
+                <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 space-y-1 ml-6">
+                  <div className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                    ⚠ This command will run without asking
+                  </div>
+                  <div className="text-xs text-amber-700/90 dark:text-amber-300/90">
+                    No confirmation dialog, no Terminal window — pressing
+                    Enter on this item runs it immediately, even from the menu
+                    bar. Only use this for commands you wrote yourself and
+                    trust. Never turn it on for something you imported or
+                    copied from someone else without reading it first.
+                  </div>
+                  {silentWarnings.length > 0 ? (
+                    <div className="text-xs text-destructive pt-1">
+                      This command looks risky:{" "}
+                      {silentWarnings.map((w) => w.pattern).join(", ")}. It
+                      will still run with no warning at all.
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
           ) : null}
 
           <div className="space-y-2">

@@ -4,6 +4,21 @@ All notable changes to Stash will be documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+### Changed
+
+- **Silent commands no longer ask for confirmation.** An item marked "Run
+  silently in the background" now runs the moment you activate it — from
+  the panel, from Enter, or straight from the menu bar without the window
+  ever appearing. The confirmation dialog was pure friction for the short,
+  trusted commands the option exists for. Commands that open Terminal.app
+  are unchanged and still confirm before every run.
+- The security warning moved to where the decision is made: ticking "Run
+  silently" in the item editor now shows what you're giving up, and flags
+  the command if it contains a dangerous pattern.
+- A silent command that finishes cleanly with nothing to say now shows a
+  brief "✓ Done" chip instead of a dialog. Output and failures still open
+  a dialog so they can be read.
+
 ## [0.2.5] — 2026-07-19
 
 ### Added

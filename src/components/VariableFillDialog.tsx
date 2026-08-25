@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { recordItemUse } from "@/lib/items";
+import { runItemSilently } from "@/lib/silentRun";
 import { resolveVariables } from "@/lib/variables";
 import { useUiStore } from "@/stores/uiStore";
 import type { ItemWithRelations, Variable } from "@/types";
@@ -144,6 +145,17 @@ export function VariableFillDialog({
     [item.content, values],
   );
 
+  // Commands marked silent skip the confirmation dialog: fill the form,
+  // hit Run, and it's already happening.
+  const onRun = () => {
+    if (item.silent) {
+      void runItemSilently(item.id, preview);
+      onOpenChange(false);
+    } else {
+      setExecuteOpen(true);
+    }
+  };
+
   const onCopy = async () => {
     try {
       await navigator.clipboard.writeText(preview);
@@ -168,7 +180,7 @@ export function VariableFillDialog({
           // In a textarea Enter adds a newline; Cmd/Ctrl+Enter still submits.
           if (inTextarea && !mod) return;
           e.preventDefault();
-          if (isCommand) setExecuteOpen(true);
+          if (isCommand) onRun();
           else void onCopy();
         }}
       >
@@ -208,12 +220,12 @@ export function VariableFillDialog({
             {copied ? "Copied ✓" : "Copy"}
           </Button>
           {isCommand ? (
-            <Button onClick={() => setExecuteOpen(true)}>Fill & Run</Button>
+            <Button onClick={onRun}>Fill &amp; Run</Button>
           ) : null}
         </DialogFooter>
       </DialogContent>
 
-      {isCommand ? (
+      {isCommand && !item.silent ? (
         <ExecuteDialog
           open={executeOpen}
           onOpenChange={(o) => {
@@ -222,7 +234,6 @@ export function VariableFillDialog({
           }}
           itemId={item.id}
           resolvedCommand={preview}
-          silent={item.silent}
         />
       ) : null}
     </Dialog>

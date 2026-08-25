@@ -31,7 +31,7 @@ Stash stores, organizes, and runs the terminal commands, AI prompts, and code sn
 - Categories with item-count badges, tags, and type filters in a collapsible sidebar
 - Drag an item from the list onto a category to file it
 - Parameterized items with `{{variable}}` placeholders and a fill-in form
-- Command execution in Terminal.app with danger detection and a confirmation dialog — or, opt-in per item, silently in the background with the result shown inline
+- Command execution in Terminal.app with danger detection and a confirmation dialog — or, opt-in per item, silently in the background with no prompt at all
 - **Global quick-launch** — a configurable system-wide hotkey (default `⌘⇧Space`) opens a search bar from anywhere
 - Command palette (`⌘K`) inside the app
 - Menu bar tray with quick access to favorite and recent items
@@ -100,7 +100,11 @@ Your data lives in the app's folder under `~/Library/Application Support/`, with
 
 ## Safety
 
-Command execution always shows a confirmation dialog with the resolved command. Dangerous patterns (`rm -rf`, `sudo`, `curl … | sh`, `dd`, `mkfs`, `> /dev/...`) trigger a red warning before you can run. Every execution is logged. Stash never fetches or runs remote code — variables are resolved locally.
+Command execution shows a confirmation dialog with the resolved command before anything runs. Dangerous patterns (`rm -rf`, `sudo`, `curl … | sh`, `dd`, `mkfs`, `> /dev/...`) trigger a red warning before you can run.
+
+The one exception is an item you have explicitly marked **"Run silently in the background"**. Those run immediately, with no dialog — that is the point of the option, and the warning is shown in the editor when you turn it on instead. Only enable it for commands you wrote yourself and trust; never for something you imported without reading it.
+
+Either way, every execution is logged. Stash never fetches or runs remote code — variables are resolved locally.
 
 ## Tech stack
 

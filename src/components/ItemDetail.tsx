@@ -7,6 +7,7 @@ import { ExecuteDialog } from "@/components/ExecuteDialog";
 import { ItemEditor } from "@/components/ItemEditor";
 import { MarkdownView } from "@/components/MarkdownView";
 import { checkPassphrase } from "@/lib/lock";
+import { runItemSilently } from "@/lib/silentRun";
 import { VariableFillDialog } from "@/components/VariableFillDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,7 +67,9 @@ export function ItemDetail() {
     if (item.variables.length > 0) {
       setFillOpen(true);
     } else if (item.type === "command") {
-      setExecuteOpen(true);
+      // Silent items skip the confirmation dialog entirely.
+      if (item.silent) void runItemSilently(item.id, item.content);
+      else setExecuteOpen(true);
     } else {
       void (async () => {
         await navigator.clipboard.writeText(item.content);
@@ -112,8 +115,15 @@ export function ItemDetail() {
       setTrayRun(true);
       setFillOpen(true);
     } else if (item.type === "command") {
-      setTrayRun(true);
-      setExecuteOpen(true);
+      // A silent item needs no dialog, so there is nothing to wait for —
+      // run it and put the window straight back in the tray.
+      if (item.silent) {
+        void runItemSilently(item.id, item.content, { fromTray: true });
+        void getCurrentWindow().hide();
+      } else {
+        setTrayRun(true);
+        setExecuteOpen(true);
+      }
     } else {
       void (async () => {
         await navigator.clipboard.writeText(item.content);
@@ -266,7 +276,14 @@ export function ItemDetail() {
             ) : (
               <>
                 {isCommand ? (
-                  <Button size="sm" onClick={() => setExecuteOpen(true)}>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      if (item.silent)
+                        void runItemSilently(item.id, item.content);
+                      else setExecuteOpen(true);
+                    }}
+                  >
                     Run
                   </Button>
                 ) : null}
@@ -492,13 +509,12 @@ export function ItemDetail() {
           item={item}
         />
       ) : null}
-      {isCommand && !hasVariables ? (
+      {isCommand && !hasVariables && !item.silent ? (
         <ExecuteDialog
           open={executeOpen}
           onOpenChange={setExecuteOpen}
           itemId={item.id}
           resolvedCommand={item.content}
-          silent={item.silent}
         />
       ) : null}
       <ConfirmDeleteDialog

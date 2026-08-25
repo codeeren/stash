@@ -1,5 +1,21 @@
 import { create } from "zustand";
+import type { SilentResult } from "@/lib/execute";
 import type { SearchFilters } from "@/types";
+
+// A short-lived confirmation chip, e.g. "✓ Done" after a silent run.
+export type Toast = {
+  id: number;
+  kind: "success" | "error";
+  text: string;
+};
+
+// Outcome of a silent run that is worth stopping for — it failed, or it
+// printed something the user should read.
+export type RunResult = {
+  command: string;
+  result: SilentResult | null;
+  error: string | null;
+};
 
 type UiStore = {
   selectedItemId: number | null;
@@ -39,6 +55,13 @@ type UiStore = {
   // during `dragover`, so drop targets cannot detect the drag otherwise.
   draggingItemId: number | null;
   setDraggingItemId: (id: number | null) => void;
+
+  toast: Toast | null;
+  showToast: (text: string, kind?: Toast["kind"]) => void;
+  dismissToast: (id: number) => void;
+
+  runResult: RunResult | null;
+  setRunResult: (r: RunResult | null) => void;
 };
 
 const emptyFilters: SearchFilters = {};
@@ -83,4 +106,14 @@ export const useUiStore = create<UiStore>((set) => ({
 
   draggingItemId: null,
   setDraggingItemId: (id) => set({ draggingItemId: id }),
+
+  toast: null,
+  showToast: (text, kind = "success") =>
+    set({ toast: { id: Date.now() + Math.random(), kind, text } }),
+  // Id-checked so a stale timer can't dismiss a newer toast.
+  dismissToast: (id) =>
+    set((s) => (s.toast?.id === id ? { toast: null } : {})),
+
+  runResult: null,
+  setRunResult: (r) => set({ runResult: r }),
 }));
