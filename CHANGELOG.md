@@ -4,6 +4,8 @@ All notable changes to Stash will be documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+## [0.2.6] — 2026-08-25
+
 ### Changed
 
 - **Silent commands no longer ask for confirmation.** An item marked "Run
