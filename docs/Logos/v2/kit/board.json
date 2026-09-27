@@ -1,0 +1,32 @@
+{
+  "brand": "Stash",
+  "tagline": "Every command, prompt and snippet you keep forgetting.",
+  "brief": "A native, keyboard-first macOS library for the terminal commands, AI prompts and code snippets developers reuse but can't remember. Local-first, fast, precise.",
+  "adjectives": ["fast", "precise", "trustworthy", "calm", "crafted"],
+  "criteria": "Success: reads at 16 px in the menu bar as a one-colour template, avoids the >_ / chest / cards clichés, and ties to typing and recall.",
+  "industry": "software",
+  "nav": ["Features", "Download", "GitHub"],
+  "brand_color": "#4636D6",
+  "greyscale": false,
+  "designer": "Stash",
+  "round": 2,
+  "concepts": [
+    {
+      "name": "Cursor-S",
+      "symbol": "svg/stash-symbol-color.svg",
+      "lockup": "svg/stash-horizontal-color.svg",
+      "symbol_on_tile": "svg/stash-symbol-reversed.svg",
+      "lockup_on_dark": "svg/stash-horizontal-reversed.svg",
+      "tile_color": "#4636D6",
+      "idea": "An S whose top terminal breaks off into a blinking cursor: type it once, Stash keeps it.",
+      "rationale": [
+        "Keyboard-first without the >_ cliché",
+        "One folded stroke = three stacked rows: a library, and an S",
+        "Dedicated small-size cut keeps the cursor gap open at 16 px",
+        "The cursor blinks in amber on dark grounds and in motion"
+      ]
+    }
+  ],
+  "recommendation": "Cursor-S in Stash Indigo #4636D6 with a Cursor Amber #FFB224 accent on dark and indigo grounds.",
+  "next_steps": ["Apply the new app icon and menu bar icon to the app", "Update README header and screenshots", "Trademark search before public launch"]
+}
