@@ -63,7 +63,7 @@ fn apply_menu(
     menu.append(&PredefinedMenuItem::separator(app)?)?;
 
     if !favorites.is_empty() {
-        let sub = Submenu::with_id(app, "fav-sub", "⭐ Favorites", true)?;
+        let sub = Submenu::with_id(app, "fav-sub", "☆ Favorites", true)?;
         for p in favorites {
             let id = format!("item:{}", p.id);
             let mi =
@@ -74,7 +74,7 @@ fn apply_menu(
     }
 
     if !recent.is_empty() {
-        let sub = Submenu::with_id(app, "items-sub", "📋 Items", true)?;
+        let sub = Submenu::with_id(app, "items-sub", "☰ Items", true)?;
         for p in recent {
             let id = format!("item:{}", p.id);
             let mi =
