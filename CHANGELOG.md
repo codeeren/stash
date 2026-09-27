@@ -4,6 +4,14 @@ All notable changes to Stash will be documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+## [0.2.8] — 2026-09-27
+
+### Changed
+
+- The menu bar menu's Favorites and Items entries now use simple line
+  icons (☆, ☰) instead of colour emoji, matching the new look and
+  following your light or dark menu bar.
+
 ## [0.2.7] — 2026-09-27
 
 ### Changed
