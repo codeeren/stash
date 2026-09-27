@@ -4,6 +4,15 @@ All notable changes to Stash will be documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+## [0.2.7] — 2026-09-27
+
+### Changed
+
+- **New look.** Stash has a new app icon and menu bar icon: an "S" whose
+  tip turns into a blinking text cursor. It is drawn to stay crisp at
+  small sizes, so the menu bar icon is sharper and easier to spot, and it
+  follows your light or dark menu bar automatically.
+
 ## [0.2.6] — 2026-08-25
 
 ### Changed
